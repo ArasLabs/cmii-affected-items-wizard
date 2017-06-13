@@ -35,12 +35,7 @@
     <unlock_on_logout>0</unlock_on_logout>
     <use_src_access>1</use_src_access>
     <Relationships>
-     <Item type="ItemType Life Cycle" id="F9A13DEEA4514A0B8DE938F15B308A5E" action="add">
-      <related_id keyed_name="Default" type="Life Cycle Map">2F3B75E17C4E4F2D9599579A965BFA64</related_id>
-      <sort_order>128</sort_order>
-      <source_id keyed_name="ECR Affected Wizard Item" type="ItemType" name="ECR Affected Wizard Item">20DA1961A6554E32830C5E7CCDBBB8E1</source_id>
-     </Item>
-    
+   
      <Item type="Property" id="01D3AC93F0F4479F8628BC309F5A1F17" action="add">
       <classification>/*</classification>
       <column_alignment>left</column_alignment>
