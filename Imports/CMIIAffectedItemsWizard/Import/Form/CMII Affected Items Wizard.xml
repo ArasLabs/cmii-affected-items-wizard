@@ -1,4 +1,24 @@
-<!-- (c) Copyright by Aras Corporation, 2004 - Company Confidential. -->
+<AML>
+ <Item type="Form" id="DE6BEC40660B499AB3E71AB7055B3243" action="add">
+  <description>CMII Affected Items Wizard Dialog</description>
+  <height>640</height>
+  <name>CMII Affected Items Wizard</name>
+  <stylesheet><![CDATA[../styles/default.css]]></stylesheet>
+  <width>850</width>
+  <Relationships>
+   <Item type="Body" id="AF7837A4CE9848ECAD1B1FA282616A4B" action="add">
+    <sort_order>128</sort_order>
+    <source_id keyed_name="CMII Affected Items Wizard" type="Form">DE6BEC40660B499AB3E71AB7055B3243</source_id>
+    <Relationships>
+     <Item type="Field" id="7E5FB7F4C887483E9C7834020C23F788" action="add">
+      <bg_color>#FFFFFF</bg_color>
+      <border_width>0</border_width>
+      <field_type>html</field_type>
+      <font_color>#000000</font_color>
+      <font_family>arial, helvetica, sans-serif</font_family>
+      <font_size>8pt</font_size>
+      <font_weight>bold</font_weight>
+      <html_code><![CDATA[<!-- (c) Copyright by Aras Corporation, 2004 - Company Confidential. -->
 
 <!--  Delphi CMII Affected Items Analysis Changes
 
@@ -23,21 +43,39 @@
 09.12.2007 peter  moved from external HTML files to Internal Form
 						added check for De-select in main grid before executing actions
 						moved toolbar definition internal instead of external XML file
+
+
+
+
+						document.writeln('<base HREF="'+top.aras.getScriptsURL()+'" />');
+
+
+
 ===========================================================================================
 -->
 <html>
 <head>
-<link rel="stylesheet" href="../../styles/default.css">
+<link rel="stylesheet" href="../styles/default.css">
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
 <script>
+document.isEditMode=true;
+var win=dialogArguments.win;
+
+var isTree = false;
+var isAffectedTree = false;
+var isRequiredTree = false;
+var isNotTree = false;
+var treeControl = null;
+var affectedTreeControl = null;
+var requiredTreeControl = null;
+var notTreeControl = null;
+var toolbarControl=null;
+
 top.aras    = dialogArguments.aras;
 var THIS    = dialogArguments.item;
 
-document.writeln('<base HREF="'+top.aras.getScriptsURL()+'" />');
-</script>
-<script language="JavaScript"  src="../javascript/scriptset2.aspx"></script>
-<script type="text/javascript" src="../javascript/AddConfigurationLink.js">Toolbar;TreeTable;Tabbar;</script>
-<script>
+top.aras.uiAddConfigLink2Doc4Assembly(document, "Toolbar");
+top.aras.uiAddConfigLink2Doc4Assembly(document, "TreeTable");
 
 returnValue = false;
 innovator  	= THIS.newInnovator();
@@ -62,8 +100,13 @@ if (THIS.getAttribute("isTemp") == "1") locked=true;
 
 function affectedOnLoad() {    //fires when the last grid "notTree" is loaded and starts.
 
+   if (!isTree && !isNotTree && !isRequiredTree && !isAffectedTree) {
+      alert('controls not ready');
+      return;
+   }
+
    //  first 2 house keeping things...  fetch list and Icon definitions
-   // load the values for the pull-down list in the Affected Tree.
+   // load the values for the pull-down list in the Affected TreeControl.
 	ChangeTypes="";
 	var qry = THIS.newItem();
 	qry.loadAML("<Item type='List' action='get' select='id'><name>Affected Item Actions</name><Relationships><Item type='Value' select='value, label,sort_order' order_by='sort_order'></Item></Relationships></Item>");
@@ -152,7 +195,7 @@ function affectedOnLoad() {    //fires when the last grid "notTree" is loaded an
 				name   = item.getItemByIndex(0).getProperty("name");
 				type   = item.getItemByIndex(0).getType();
 			}
-			if (action=="Add" || action=="Change" || action=="Delete")  affectedTree.addRow(id,type + "|"+ action + "|"+ number + "|"+ name,id);
+			if (action=="Add" || action=="Change" || action=="Delete")  affectedTreeControl.addRow(id,type + "|"+ action + "|"+ number + "|"+ name,id);
 		}
 	}
 
@@ -200,8 +243,8 @@ function affectedOnLoad() {    //fires when the last grid "notTree" is loaded an
 				name   = item.getItemByIndex(0).getProperty("name");
 				type   = item.getItemByIndex(0).getType();
 			}
-			if (action=="Not Affected")  notTree.addRow(id,type + "|"+ number + "|"+ name,id);
-			if (action=="Needs Review")  requiredTree.addRow(id,type + "|"+ number + "|"+ name,id);
+			if (action=="Not Affected")  notTreeControl.addRow(id,type + "|"+ number + "|"+ name,id);
+			if (action=="Needs Review")  requiredTreeControl.addRow(id,type + "|"+ number + "|"+ name,id);
 		}
 	}
 }
@@ -219,10 +262,10 @@ function saveExit(save) {
 
 
 	// terminate any pending edits
-	notTree.turnEditOff();
-	requiredTree.turnEditOff();
-	tree.turnEditOff();
-	affectedTree.turnEditOff();
+	notTreeControl.turnEditOff();
+	requiredTreeControl.turnEditOff();
+	treeControl.turnEditOff();
+	affectedTreeControl.turnEditOff();
 	returnValue = false;
 
 	if (save && locked)  {
@@ -246,38 +289,38 @@ function saveExit(save) {
 
 
 			// if Item is found still in Affected Grid,  check for a change of Action
-			if (affectedTree.isItemExists(id) ) {
-				if (affectedTree.cells(id,1).getValue() != originalAction ) {
+			if (affectedTreeControl.isItemExists(id) ) {
+				if (affectedTreeControl.cells(id,1).getValue() != originalAction ) {
 					// user changed the action pulled don'tlist
 					THIS.setAttribute("isDirty","1"); // set the CR as dirty
 					if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
-					Item.setProperty("action", affectedTree.cells(id,1).getValue() );
+					Item.setProperty("action", affectedTreeControl.cells(id,1).getValue() );
 					Item.setAttribute("action","edit");
 					Item.setAttribute("isDirty","1");
 					RelItem.setAttribute("action","edit");
 					RelItem.setAttribute("isDirty","1");
 				}
-				affectedTree.deleteRow(id);
+				affectedTreeControl.deleteRow(id);
 			}
 			// If the Item is in the notTree,  this is a change in Disposition,  delete from DOM,
 			// but leave in grid to become an Add in Pass 3
-			if (notTree.isItemExists(id) ) {
+			if (notTreeControl.isItemExists(id) ) {
 				// user changed his opinion this editing session
 				THIS.setAttribute("isDirty","1"); // set the CR as dirty
 				if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
 				RelItem.setAttribute("action","delete");
 				RelItem.setAttribute("isDirty","1");
-				// notTree.deleteRow(id);  don't delete anymore,  use in Pass 3
+				// notTreeControl.deleteRow(id);  don't delete anymore,  use in Pass 3
 			}
 			// If the Item is in the review needed Tree,  this is a change in Disposition,  delete from DOM,
 			// but leave in grid to become an Add in Pass 3
-			if (requiredTree.isItemExists(id) ) {
+			if (requiredTreeControl.isItemExists(id) ) {
 				// user changed his opinion this editing session
 				THIS.setAttribute("isDirty","1"); // set the CR as dirty
 				if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
 				RelItem.setAttribute("action","delete");
 				RelItem.setAttribute("isDirty","1");
-				// requiredTree.deleteRow(id);
+				// requiredTreeControl.deleteRow(id);
 			}
 		}
 
@@ -295,15 +338,15 @@ function saveExit(save) {
 			var id	 				= Item.getProperty("affected_id");
 
 			// if it's now found in the AffectedTree,  user changed the designation, flag a delete in the DOM
-			if (affectedTree.isItemExists(id) ) {
+			if (affectedTreeControl.isItemExists(id) ) {
 				THIS.setAttribute("isDirty","1"); // set the ECR as dirty
 				if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
 				RelItem.setAttribute("action","delete");
 				RelItem.setAttribute("isDirty","1");
-  			   // affectedTree.deleteRow(id);
+  			   // affectedTreeControl.deleteRow(id);
 			}
 			// if found in the NotAffected Tree, check whether this is a change in disposition
-			if (notTree.isItemExists(id) ) {
+			if (notTreeControl.isItemExists(id) ) {
 				if (originalAction != 'Not Affected') {
 					// user changed his opinion this editing session
 					THIS.setAttribute("isDirty","1"); // set the ECR as dirty
@@ -312,9 +355,9 @@ function saveExit(save) {
 					RelItem.setAttribute("action","edit");
 					RelItem.setAttribute("isDirty","1");
 				}
-				notTree.deleteRow(id);
+				notTreeControl.deleteRow(id);
 			}
-			if (requiredTree.isItemExists(id) ) {
+			if (requiredTreeControl.isItemExists(id) ) {
 				if (originalAction != 'Needs Review') {
 					// user changed his opinion this editing session
 					THIS.setAttribute("isDirty","1"); // set the ECR as dirty
@@ -323,7 +366,7 @@ function saveExit(save) {
 					RelItem.setAttribute("action","edit");
 					RelItem.setAttribute("isDirty","1");
 				}
-				requiredTree.deleteRow(id);
+				requiredTreeControl.deleteRow(id);
 			}
 
 		}
@@ -333,7 +376,7 @@ function saveExit(save) {
 		// new Affected Items
 		var rowid="";
 		var itemId="";
-		var ids =affectedTree.getAllItemIds("|");
+		var ids =affectedTreeControl.getAllItemIds("|");
 		var id_array = ids.split("|");
 		for (var x = 0 ; x < id_array.length; x++) {
 			rowid = id_array[x];
@@ -344,25 +387,25 @@ function saveExit(save) {
 				myNewRelItem.setAttribute("isTemp","1");
 				myNewRelItem.setAttribute("isDirty","1");
 				var myNewItem = innovator.newItem('Affected Item','add');
-				myNewItem.setProperty('affected_type',affectedTree.cells(rowid,0).getValue() );
+				myNewItem.setProperty('affected_type',affectedTreeControl.cells(rowid,0).getValue() );
 				myNewItem.setProperty('affected_id',rowid);
-				myNewItem.setProperty('action',affectedTree.cells(rowid,1).getValue());
+				myNewItem.setProperty('action',affectedTreeControl.cells(rowid,1).getValue());
 				myNewItem.setAttribute("isTemp","1");
 				myNewItem.setAttribute("isDirty","1");
-				myNewItem.setPropertyAttribute("affected_id","keyed_name",affectedTree.cells(rowid,3).getValue())
-				myNewItem.setPropertyAttribute("affected_id","type",affectedTree.cells(rowid,0).getValue())
-				if (affectedTree.cells(rowid,0).getValue() == "Part")
+				myNewItem.setPropertyAttribute("affected_id","keyed_name",affectedTreeControl.cells(rowid,3).getValue())
+				myNewItem.setPropertyAttribute("affected_id","type",affectedTreeControl.cells(rowid,0).getValue())
+				if (affectedTreeControl.cells(rowid,0).getValue() == "Part")
 					myNewItem.setProperty("affected_type","<img src='"+PartIcon+"'>");
 				else
 					myNewItem.setProperty("affected_type","<img src='"+DocumentIcon+"'>");
 
 				myNewRelItem.setPropertyItem('related_id',myNewItem);
 				THIS.addRelationship(myNewRelItem);
-				affectedTree.deleteRow(rowid);
+				affectedTreeControl.deleteRow(rowid);
 			}
 		}
 		//  new Not Affected
-		ids =notTree.getAllItemIds("|");
+		ids =notTreeControl.getAllItemIds("|");
 		id_array = ids.split("|");
 		for (var x = 0 ; x < id_array.length; x++) {
 			rowid = id_array[x];
@@ -372,22 +415,22 @@ function saveExit(save) {
 				var myNewRelItem = innovator.newItem('ECR Affected Wizard Item','add');
 				var myNewItem = innovator.newItem('Affected Item','add');
 				myNewRelItem.setProperty('action','Not Affected');
-				myNewItem.setProperty('affected_type',notTree.cells(rowid,0).getValue() );
+				myNewItem.setProperty('affected_type',notTreeControl.cells(rowid,0).getValue() );
 				myNewItem.setProperty('affected_id',rowid);
 				myNewItem.setProperty('action','');
-				myNewItem.setPropertyAttribute("affected_id","keyed_name",notTree.cells(rowid,2).getValue())
-				myNewItem.setPropertyAttribute("affected_id","type",notTree.cells(rowid,0).getValue())
-				if (notTree.cells(rowid,0).getValue() == "Part")
+				myNewItem.setPropertyAttribute("affected_id","keyed_name",notTreeControl.cells(rowid,2).getValue())
+				myNewItem.setPropertyAttribute("affected_id","type",notTreeControl.cells(rowid,0).getValue())
+				if (notTreeControl.cells(rowid,0).getValue() == "Part")
 					myNewItem.setProperty("affected_type","<img src='"+PartIcon+"'>");
 				else
 					myNewItem.setProperty("affected_type","<img src='"+DocumentIcon+"'>");
 				myNewRelItem.setPropertyItem('related_id',myNewItem);
 				THIS.addRelationship(myNewRelItem);
-				notTree.deleteRow(rowid);
+				notTreeControl.deleteRow(rowid);
 			}
 		}
 		// new Needs Review items
-		ids =requiredTree.getAllItemIds("|");
+		ids =requiredTreeControl.getAllItemIds("|");
 		id_array = ids.split("|");
 		for (var x = 0 ; x < id_array.length; x++) {
 			rowid = id_array[x];
@@ -397,18 +440,18 @@ function saveExit(save) {
 				var myNewRelItem = innovator.newItem('ECR Affected Wizard Item','add');
 				var myNewItem = innovator.newItem('Affected Item','add');
 				myNewRelItem.setProperty('action','Needs Review');
-				myNewItem.setProperty('affected_type',requiredTree.cells(rowid,0).getValue() );
+				myNewItem.setProperty('affected_type',requiredTreeControl.cells(rowid,0).getValue() );
 				myNewItem.setProperty('affected_id',rowid);
 				myNewItem.setProperty('action','');
-				myNewItem.setPropertyAttribute("affected_id","keyed_name",requiredTree.cells(rowid,2).getValue())
-				myNewItem.setPropertyAttribute("affected_id","type",requiredTree.cells(rowid,0).getValue())
-				if (requiredTree.cells(rowid,0).getValue() == "Part")
+				myNewItem.setPropertyAttribute("affected_id","keyed_name",requiredTreeControl.cells(rowid,2).getValue())
+				myNewItem.setPropertyAttribute("affected_id","type",requiredTreeControl.cells(rowid,0).getValue())
+				if (requiredTreeControl.cells(rowid,0).getValue() == "Part")
 					myNewItem.setProperty("affected_type","<img src='"+PartIcon+"'>");
 				else
 					myNewItem.setProperty("affected_type","<img src='"+DocumentIcon+"'>");
 				myNewRelItem.setPropertyItem('related_id',myNewItem);
 				THIS.addRelationship(myNewRelItem);
-				requiredTree.deleteRow(rowid);
+				requiredTreeControl.deleteRow(rowid);
 			}
 		}
 	}
@@ -428,10 +471,10 @@ function onToolbarClick(tbItem) {
 
   	if (tbItemId == "findItem") {
 		updateActiveType();
-		if (toolbar.getActiveToolbar().getElement('item').getText() !="") {
+		if (toolbarControl.getActiveToolbar().getElement('item').getText() !="") {
 			// see if this is a valid part
 			var qry = innovator.newItem();
-			qry.loadAML("<Item type='" + ActiveType + "' select='item_number,name' action='get'><is_current>1</is_current><item_number>" + toolbar.getActiveToolbar().getElement('item').getText() + "</item_number></Item>");
+			qry.loadAML("<Item type='" + ActiveType + "' select='item_number,name' action='get'><is_current>1</is_current><item_number>" + toolbarControl.getActiveToolbar().getElement('item').getText() + "</item_number></Item>");
 			qry = qry.apply();
 			var Items = qry.getItemsByXPath("//Item[@type='" + ActiveType + "']");
 			if (Items.getItemCount() > 0) {
@@ -439,7 +482,7 @@ function onToolbarClick(tbItem) {
 				loadItem(Item);
 				return;
 			}
-			toolbar.getActiveToolbar().getElement('item').setText("");
+			toolbarControl.getActiveToolbar().getElement('item').setText("");
 		}
 		setTimeout('openItemBrowser()',1);
 		return;
@@ -487,9 +530,9 @@ function loadItem(Item) {
 			break;
 		default:
 	}
-	affectedTree.deselect();
-	requiredTree.deselect();
-	notTree.deselect();
+	affectedTreeControl.deselect();
+	requiredTreeControl.deselect();
+	notTreeControl.deselect();
 }
 
 function clearGrid(which) {
@@ -503,75 +546,81 @@ function clearGrid(which) {
 }
 // ============================================================================
 function setArrowContext(r,c) {
-	var action = tree.cells(r,2).getValue();
+	var action = treeControl.cells(r,2).getValue();
+   var rowIds = treeControl.getSelectedItemIds(';').split(';');
 
-   var rowIds = tree.getSelectedItemIds(';').split(';');
+
 	if ((action=="" || rowIds.length > 1) && locked) {  // if many are selected,  don't try to give buttons smart context
-		userAddToAffected.disabled 	= false;
-		userAddToNotAffected.disabled = false;
-		userAddToRequired.disabled 	= false;
+		document.all.userAddToAffected.disabled 	= false;
+		document.all.userAddToNotAffected.disabled = false;
+		document.all.userAddToRequired.disabled 	= false;
 		return;
 	}
 
 	if (action =="Affected" && locked) {
-		userAddToAffected.disabled 	= true;
-		userAddToNotAffected.disabled = false;
-		userAddToRequired.disabled 	= false;
+		document.all.userAddToAffected.disabled 	= true;
+		document.all.userAddToNotAffected.disabled = false;
+		document.all.userAddToRequired.disabled 	= false;
 		return;
 	}
 	if (action =="Needs Review" && locked) {
-		userAddToAffected.disabled 	= false;
-		userAddToNotAffected.disabled = false;
-		userAddToRequired.disabled 	= true;
+		document.all.userAddToAffected.disabled 	= false;
+		document.all.userAddToNotAffected.disabled = false;
+		document.all.userAddToRequired.disabled 	= true;
 		return;
 	}
 	if (action =="Not Affected" && locked) {
-		userAddToAffected.disabled 	= false;
-		userAddToNotAffected.disabled = true;
-		userAddToRequired.disabled 	= false;
+		document.all.userAddToAffected.disabled 	= false;
+		document.all.userAddToNotAffected.disabled = true;
+		document.all.userAddToRequired.disabled 	= false;
 		return;
 	}
-	userAddToAffected.disabled 	= true;
-	userAddToNotAffected.disabled = true;
-	userAddToRequired.disabled 	= true;
-
+	document.all.userAddToAffected.disabled 	= true;
+	document.all.userAddToNotAffected.disabled = true;
+	document.all.userAddToRequired.disabled 	= true;
 }
 
-function addToTheRight(whichTreeName) {
-	var rowId = tree.getSelectedId();
-	var whichTree = document.applets[whichTreeName];
+function addToTheRight(whichTree,whichTreeName) {
+	var rowId = treeControl.getSelectedId();
+	if (rowId=="") {
+		document.all.userAddToAffected.disabled 	= true;
+		document.all.userAddToNotAffected.disabled = true;
+		document.all.userAddToRequired.disabled 	= true;
+	   return;
+	}
+	//var whichTree = document.applets[whichTreeName];
    var NewAffected="";
-   var rowId, rowIds = tree.getSelectedItemIds(';').split(';');
+   var rowId, rowIds = treeControl.getSelectedItemIds(';').split(';');
 	if (rowIds.length == 0) return;
 	for (var i = 0; i < rowIds.length; i++) {
 		rowId = rowIds[i];
-		var itemId     = tree.getUserData(rowId,"id");
-		var itemType   = tree.cells(rowId,1).getValue();
-		var itemNumber = tree.cells(rowId,0).getValue();
-		var itemName   = tree.cells(rowId,3).getValue();
+		var itemId     = treeControl.getUserData(rowId,"id");
+		var itemType   = treeControl.cells(rowId,1).getValue();
+		var itemNumber = treeControl.cells(rowId,0).getValue();
+		var itemName   = treeControl.cells(rowId,3).getValue();
 
 		// decide if the Item already exists in the target tree,  if yes,  NOOP
 		if ( !whichTree.isItemExists(itemId) ) {
 			// now we are sure the item is being moved to another tree than the one it is already in (if any)
-			// copy the item over,  and then call the function to update the Actions in the left tree.
-			if (whichTreeName == "affectedTree") {
+			// copy the item over,  and then call the function to update the Actions in the left treeControl.
+			if (whichTreeName == "affectedTreeControl") {
 				if (NewAffected=="")
 					NewAffected=itemId+";" +itemType;
 				else
 					NewAffected+= "|" + itemId+";" +itemType ;
-				affectedTree.addRow(itemId,itemType + "|"+ "Change" + "|"+ itemNumber + "|"+ itemName,itemId);
-				requiredTree.deleteRow(itemId);
-				notTree.deleteRow(itemId);
+				affectedTreeControl.addRow(itemId,itemType + "|"+ "Change" + "|"+ itemNumber + "|"+ itemName,itemId);
+				requiredTreeControl.deleteRow(itemId);
+				notTreeControl.deleteRow(itemId);
 			}
-			if (whichTreeName == "requiredTree") {
-				requiredTree.addRow(itemId,itemType + "|"+ itemNumber + "|"+ itemName,itemId);
-				affectedTree.deleteRow(itemId);
-				notTree.deleteRow(itemId);
+			if (whichTreeName == "requiredTreeControl") {
+				requiredTreeControl.addRow(itemId,itemType + "|"+ itemNumber + "|"+ itemName,itemId);
+				affectedTreeControl.deleteRow(itemId);
+				notTreeControl.deleteRow(itemId);
 			}
-			if (whichTreeName == "notTree") {
-				notTree.addRow(itemId,itemType + "|"+ itemNumber + "|"+ itemName,itemId);
-				requiredTree.deleteRow(itemId);
-				affectedTree.deleteRow(itemId);
+			if (whichTreeName == "notTreeControl") {
+				notTreeControl.addRow(itemId,itemType + "|"+ itemNumber + "|"+ itemName,itemId);
+				requiredTreeControl.deleteRow(itemId);
+				affectedTreeControl.deleteRow(itemId);
 			}
 		}
 	}
@@ -618,8 +667,8 @@ function runRule1(idList) {   //  any new item added to the Affected table,  run
 			//  if it's not already on the review required list
 			//  if it is not already on the affected list
 			//  if it's not already on the notAffected List  (ASK GAVLAK ABOUT THIS ONE);
-			if (!affectedTree.isItemExists(id) && !requiredTree.isItemExists(id) && !notTree.isItemExists(id))
-		 			requiredTree.addRow(id,type + "|"+ number + "|"+ name,id);
+			if (!affectedTreeControl.isItemExists(id) && !requiredTreeControl.isItemExists(id) && !notTreeControl.isItemExists(id))
+		 			requiredTreeControl.addRow(id,type + "|"+ number + "|"+ name,id);
 		}
 	}
 	UpdateTreeActions();
@@ -629,7 +678,7 @@ function runRule1(idList) {   //  any new item added to the Affected table,  run
 function loadTreeMultiWU(id,type,item_number, name) {
 	var statusId = top.aras.showStatusMessage('   Loading ...', '../../images/Animated/ProgressSmall.gif');
 	uniqueGridId=0;
-	clearGrid(tree);
+	clearGrid(treeControl);
 
 	var MyId;
 	var qry = innovator.applyMethod("CMII-Fetch-WU", "<Item type='" + type + "' id='" + id + "'><item_number>" + item_number + "</item_number><name>" + name + "</name></Item>");
@@ -641,9 +690,9 @@ function loadTreeMultiWU(id,type,item_number, name) {
   	for (var i=0; i < Items.getItemCount(); i++) {
 	   var Item = Items.getItemByIndex(i);
 		var MyId = Item.getID() + uniqueGridId++;
-	   tree.insertRoot(MyId, Item.getAttribute("item_number"," ")+ "|" + Item.getType() + "| " + "|" + Item.getAttribute("name"," "),MyId );
-	   tree.setUserData(MyId,"id",Item.getID());
-		tree.openItem(MyId);
+	   treeControl.insertRoot(MyId, Item.getAttribute("item_number"," ")+ "|" + Item.getType() + "| " + "|" + Item.getAttribute("name"," "),MyId );
+	   treeControl.setUserData(MyId,"id",Item.getID());
+		treeControl.openItem(MyId);
 		loadTreeMultiWUrecursion(MyId,Item);
 	 }
 	UpdateTreeActions();
@@ -656,8 +705,8 @@ function loadTreeMultiWUrecursion(ParentId, ParentItem) {
 	   var Item = Items.getItemByIndex(i);
 		var MyId = Item.getID() + uniqueGridId++;
 
-	   tree.insertNewChild(ParentId,MyId, Item.getAttribute("item_number"," ") +"|"+ Item.getType() +"| " + "|"+ Item.getAttribute("name"," ") ,MyId);
-   	tree.setUserData(MyId,"id",Item.getID());
+	   treeControl.insertNewChild(ParentId,MyId, Item.getAttribute("item_number"," ") +"|"+ Item.getType() +"| " + "|"+ Item.getAttribute("name"," ") ,MyId);
+   	treeControl.setUserData(MyId,"id",Item.getID());
 
 		loadTreeMultiWUrecursion(MyId,Item);
 	 }
@@ -666,12 +715,12 @@ function loadTreeMultiWUrecursion(ParentId, ParentItem) {
 
 function loadTreeBOM(id,type,item_number, name) {
 	uniqueGridId=0;
-	clearGrid(tree);
+	clearGrid(treeControl);
    if (type=='Document') return;
 	var statusId = top.aras.showStatusMessage('   Loading ...', '../../images/Animated/ProgressSmall.gif');
 	var MyPid = id + uniqueGridId++;
-	tree.insertRoot(MyPid, item_number +"|"+ type +"| "  + "|"+ name,MyPid);
-	tree.setUserData(MyPid,"id",id);
+	treeControl.insertRoot(MyPid, item_number +"|"+ type +"| "  + "|"+ name,MyPid);
+	treeControl.setUserData(MyPid,"id",id);
 	var qry = innovator.newItem();
 	qry.loadAML("<Item type='Part' action='get' id='" + id + "' select='id'><Relationships><Item type='Part BOM' select='id,related_id(item_number,name)'></Item><Item type='Part Document' select='id,related_id(item_number,name)'></Item></Relationships></Item>");
    qry = qry.apply();
@@ -680,8 +729,8 @@ function loadTreeBOM(id,type,item_number, name) {
 		var PartItem= BomItem.getPropertyItem("related_id");
 
 		var MyCid = PartItem.getID() + uniqueGridId++;
-		tree.insertNewChild(MyPid,MyCid, PartItem.getProperty("item_number") +"|"+ "Part" +"| " + "|"+ PartItem.getProperty("name"),MyCid);
-		tree.setUserData(MyCid,"id",PartItem.getID());
+		treeControl.insertNewChild(MyPid,MyCid, PartItem.getProperty("item_number") +"|"+ "Part" +"| " + "|"+ PartItem.getProperty("name"),MyCid);
+		treeControl.setUserData(MyCid,"id",PartItem.getID());
 	}
    var Items = qry.getItemsByXPath("//Item[@type='Part Document']");
   	for (var i=0; i < Items.getItemCount(); i++) {
@@ -689,17 +738,17 @@ function loadTreeBOM(id,type,item_number, name) {
 		var DocItem=  BomItem.getPropertyItem("related_id");
 
 		var MyCid = DocItem.getID() + uniqueGridId++;
-		tree.insertNewChild(MyPid,MyCid, DocItem.getProperty("item_number") +"|"+ "Document" +"|" + " " + "|"+ DocItem.getProperty("name"),MyCid);
-		tree.setUserData(MyCid,"id",DocItem.getID());
+		treeControl.insertNewChild(MyPid,MyCid, DocItem.getProperty("item_number") +"|"+ "Document" +"|" + " " + "|"+ DocItem.getProperty("name"),MyCid);
+		treeControl.setUserData(MyCid,"id",DocItem.getID());
 	}
 	UpdateTreeActions();
-  	tree.openItem(MyPid);
+  	treeControl.openItem(MyPid);
 	top.aras.clearStatusMessage (statusId);
 }
 
 function loadTreeWU(id,type,item_number, name) {
 	uniqueGridId=0;
-	clearGrid(tree);
+	clearGrid(treeControl);
 	var statusId = top.aras.showStatusMessage('   Loading ...', '../../images/Animated/ProgressSmall.gif');
 
 	var qry = innovator.newItem();
@@ -713,18 +762,18 @@ function loadTreeWU(id,type,item_number, name) {
 	   var Item = Items.getItemByIndex(i);
 
 	   var MyPid = Item.getID() + uniqueGridId++;
-	   tree.insertRoot(MyPid, Item.getProperty("item_number"," ")+ "|" + "Part" + "| " + "|" + Item.getProperty("name"," "),MyPid );
-	   tree.setUserData(MyPid,"id",Item.getID());
+	   treeControl.insertRoot(MyPid, Item.getProperty("item_number"," ")+ "|" + "Part" + "| " + "|" + Item.getProperty("name"," "),MyPid );
+	   treeControl.setUserData(MyPid,"id",Item.getID());
 
 	   var myRid = id + uniqueGridId++;
-	   tree.insertNewChild(MyPid,myRid, item_number +"|"+ type +"| " + "|"+ name ,myRid);
-   	tree.setUserData(myRid,"id",id);
-   	tree.openItem(MyPid);
+	   treeControl.insertNewChild(MyPid,myRid, item_number +"|"+ type +"| " + "|"+ name ,myRid);
+   	treeControl.setUserData(myRid,"id",id);
+   	treeControl.openItem(MyPid);
 	}
 	if (Items.getItemCount() ==0 ) {
 	   var MyPid =id + uniqueGridId++;
-	   tree.insertRoot(MyPid, item_number+ "|" + type + "| " + "|" + name,MyPid );
-	   tree.setUserData(MyPid,"id",id);
+	   treeControl.insertRoot(MyPid, item_number+ "|" + type + "| " + "|" + name,MyPid );
+	   treeControl.setUserData(MyPid,"id",id);
 	}
 	UpdateTreeActions();
 	top.aras.clearStatusMessage (statusId);
@@ -737,19 +786,19 @@ function UpdateTreeActions() {
 	// loop thru the tree that is displayed and check for already dispositioned Items
    var rowid="";
    var itemId="";
-	var ids =tree.getAllItemIds("|");
+	var ids =treeControl.getAllItemIds("|");
   	var id_array = ids.split("|");
 	for (var x = 0 ; x < id_array.length ; x++) {
 		rowid = id_array[x];
-		itemId = tree.getUserData(rowid,"id");
-		if (affectedTree.isItemExists(itemId))  {
-			tree.cells(rowid,2).setValue("Affected");
+		itemId = treeControl.getUserData(rowid,"id");
+		if (affectedTreeControl.isItemExists(itemId))  {
+			treeControl.cells(rowid,2).setValue("Affected");
 		} else {
-			if (notTree.isItemExists(itemId)) {
-				tree.cells(rowid,2).setValue("Not Affected");
+			if (notTreeControl.isItemExists(itemId)) {
+				treeControl.cells(rowid,2).setValue("Not Affected");
 			} else {
-				if (requiredTree.isItemExists(itemId))
-					tree.cells(rowid,2).setValue("Needs Review");
+				if (requiredTreeControl.isItemExists(itemId))
+					treeControl.cells(rowid,2).setValue("Needs Review");
 			}
 		}
 	}
@@ -757,21 +806,21 @@ function UpdateTreeActions() {
 
 
 function onRowSelect() {
-	requiredTree.deselect();
-	notTree.deselect();
-	affectedTree.deselect();
-	tree.deselect();
+	requiredTreeControl.deselect();
+	notTreeControl.deselect();
+	affectedTreeControl.deselect();
+	treeControl.deselect();
 }
 
 
 function onAffectedClick() {
-	onClick(affectedTree,affectedTree.cells(affectedTree.getSelectedId(),2).getValue(),affectedTree.cells(affectedTree.getSelectedId(),3).getValue());
+	onClick(affectedTreeControl,affectedTreeControl.cells(affectedTreeControl.getSelectedId(),2).getValue(),affectedTreeControl.cells(affectedTreeControl.getSelectedId(),3).getValue());
 }
 function onRequiredClick() {
-	onClick(requiredTree,requiredTree.cells(requiredTree.getSelectedId(),1).getValue(),requiredTree.cells(requiredTree.getSelectedId(),2).getValue());
+	onClick(requiredTreeControl,requiredTreeControl.cells(requiredTreeControl.getSelectedId(),1).getValue(),requiredTreeControl.cells(requiredTreeControl.getSelectedId(),2).getValue());
 }
 function onNotClick() {
-	onClick(notTree,notTree.cells(notTree.getSelectedId(),1).getValue(),notTree.cells(notTree.getSelectedId(),2).getValue());
+	onClick(notTreeControl,notTreeControl.cells(notTreeControl.getSelectedId(),1).getValue(),notTreeControl.cells(notTreeControl.getSelectedId(),2).getValue());
 }
 
 function onClick(whichTree,whichItemNumber,whichName) {
@@ -842,9 +891,9 @@ function OnAffectedEditCell(event,row,col)  {
 	if (event==0) { //  this is START of edit event
 	   if (!locked) return false;
 		if (col==1)  { //  Pull down List
-			affectedTree.setComboList('', 1);
-      	affectedTree.setColumnProperties('type=COMBO,list=1', col);
-			affectedTree.cells(row,col).setCombo(ChangeTypes,ChangeTypes);
+			affectedTreeControl.setComboList('', 1);
+      	affectedTreeControl.setColumnProperties('type=COMBO,list=1', col);
+			affectedTreeControl.cells(row,col).setCombo(ChangeTypes,ChangeTypes);
 			return true;
 		}
 		return false;
@@ -855,7 +904,7 @@ function OnAffectedEditCell(event,row,col)  {
 
 
 function updateActiveType() {
-	var  el    = toolbar.getActiveToolbar().getElement('type');
+	var  el    = toolbarControl.getActiveToolbar().getElement('type');
 	ActiveType = el.getItem(el.getSelectedIndex() );
 }
 
@@ -868,16 +917,16 @@ function onMenuInit(whichTree) {
 	whichTree.menuAdd("Open Item");
 }
 function onMenu(item,r,c) {
-	openItem(tree.cells(r,1).getValue(), tree.getUserData(r,"id") );
+	openItem(treeControl.cells(r,1).getValue(), treeControl.getUserData(r,"id") );
 }
 function onMenuAffected(id,r,c) {
-	openItem(affectedTree.cells(r,0).getValue(),r);
+	openItem(affectedTreeControl.cells(r,0).getValue(),r);
 }
 function onMenuRequired(id,r,c) {
-	openItem(requiredTree.cells(r,0).getValue(),r);
+	openItem(requiredTreeControl.cells(r,0).getValue(),r);
 }
 function onMenuNot(id,r,c) {
-	openItem(notTree.cells(r,0).getValue(),r);
+	openItem(notTreeControl.cells(r,0).getValue(),r);
 }
 
 // ============================= control callbacks =============================
@@ -885,26 +934,28 @@ function onMenuNot(id,r,c) {
 
 <script language="jscript" for="tree" event="GridStart(isSuccess)">
 	// ----  MAIN TREE -----------------------------------------------------
-	tree.Delimeter = "|";
-	tree.DrawGrid = true;
-	tree.HeaderBGColor = "#d4d0c8";
-	tree.SelBGColor = "#FFFF00";
-	tree.ColumnDraggable = "0";
-	tree.noSort = "1";
-	tree.ExpandRoot = "1";
-	tree.MultiSelect = "1";
-	tree.treeLines = "1";
-   tree.setColumnCount(4);
-	tree.setInitWidths("173|67|90|150");
-	tree.setHorAligns("LEFT|LEFT|CENTER|LEFT");
-   tree.SetHeaderCol(0,"Hierarchy");
-   tree.SetHeaderCol(1,"Type");
-   tree.SetHeaderCol(2,"Action");
-   tree.SetHeaderCol(3,"Description");
-   tree.Editable = true;
-   tree.SetColumnProperties("type=noedit",0);
-   tree.SetColumnProperties("type=noedit",2);
-   tree.SetColumnProperties("type=noedit",3);
+	treeControl=document.tree;
+	treeControl.Delimeter = "|";
+	treeControl.DrawGrid = true;
+	treeControl.HeaderBGColor = "#d4d0c8";
+	treeControl.SelBGColor = "#FFFF00";
+	treeControl.ColumnDraggable = "0";
+	treeControl.noSort = "1";
+	treeControl.ExpandRoot = "1";
+	treeControl.MultiSelect = "1";
+	treeControl.treeLines = "1";
+   treeControl.setColumnCount(4);
+	treeControl.setInitWidths("173|67|90|150");
+	treeControl.setHorAligns("LEFT|LEFT|CENTER|LEFT");
+   treeControl.SetHeaderCol(0,"Hierarchy");
+   treeControl.SetHeaderCol(1,"Type");
+   treeControl.SetHeaderCol(2,"Action");
+   treeControl.SetHeaderCol(3,"Description");
+   treeControl.Editable = true;
+   treeControl.SetColumnProperties("type=noedit",0);
+   treeControl.SetColumnProperties("type=noedit",2);
+   treeControl.SetColumnProperties("type=noedit",3);
+   isTree=true;
 </script>
 <script language="jscript" for="tree" event="GridClick(rowId, col)">
   setArrowContext(rowId, col);
@@ -924,29 +975,30 @@ function onMenuNot(id,r,c) {
 
 <script language="jscript" for="affectedTree" event="GridStart(isSuccess)">
 	// ----  AFFECTED TREE -----------------------------------------------------
-	affectedTree.Delimeter = "|";
-	affectedTree.DrawGrid = true;
-	affectedTree.HeaderBGColor = "#d4d0c8";
-	affectedTree.SelBGColor = "#FFFF00";
-	affectedTree.ColumnDraggable = false;
-	affectedTree.noSort = true;
-	affectedTree.treeLines = "1";
-   affectedTree.setColumnCount(4);
-	affectedTree.setInitWidths("60|45|60|135");
-	affectedTree.setHorAligns("LEFT|LEFT|LEFT|LEFT");
-   affectedTree.SetHeaderCol(0,"Type");
-   affectedTree.SetHeaderCol(1,"Action");
-   affectedTree.SetHeaderCol(2,"Identifier");
-   affectedTree.SetHeaderCol(3,"Description");
-   affectedTree.Editable = true;
-   affectedTree.SetColumnProperties("type=noedit",0);
-   affectedTree.SetColumnProperties("type=noedit",2);
-   affectedTree.SetColumnProperties("type=noedit",3);
-
+	affectedTreeControl=document.affectedTree;
+	affectedTreeControl.Delimeter = "|";
+	affectedTreeControl.DrawGrid = true;
+	affectedTreeControl.HeaderBGColor = "#d4d0c8";
+	affectedTreeControl.SelBGColor = "#FFFF00";
+	affectedTreeControl.ColumnDraggable = false;
+	affectedTreeControl.noSort = true;
+	affectedTreeControl.treeLines = "1";
+   affectedTreeControl.setColumnCount(4);
+	affectedTreeControl.setInitWidths("60|45|60|135");
+	affectedTreeControl.setHorAligns("LEFT|LEFT|LEFT|LEFT");
+   affectedTreeControl.SetHeaderCol(0,"Type");
+   affectedTreeControl.SetHeaderCol(1,"Action");
+   affectedTreeControl.SetHeaderCol(2,"Identifier");
+   affectedTreeControl.SetHeaderCol(3,"Description");
+   affectedTreeControl.Editable = true;
+   affectedTreeControl.SetColumnProperties("type=noedit",0);
+   affectedTreeControl.SetColumnProperties("type=noedit",2);
+   affectedTreeControl.SetColumnProperties("type=noedit",3);
+   isAffectedTree = true;
 </script>
 <script language="jscript" for="affectedTree" event="GridClick(rowId, col)">
   onAffectedClick(rowId, col);
-  affectedTree.setSelectedRow(rowId, false, false);
+  affectedTreeControl.setSelectedRow(rowId, false, false);
   return true;
 </script>
 <script language="jscript" for="affectedTree" event="GridDoubleClick(rowId)">
@@ -964,27 +1016,30 @@ function onMenuNot(id,r,c) {
 
 <script language="jscript" for="requiredTree" event="GridStart(isSuccess)">
 	// ----  REQUIRED TREE -----------------------------------------------------
-	requiredTree.Delimeter = "|";
-	requiredTree.DrawGrid = true;
-	requiredTree.HeaderBGColor = "#d4d0c8";
-	requiredTree.SelBGColor = "#FFFF00";
-	requiredTree.ColumnDraggable = false;
-	requiredTree.noSort = true;
-	requiredTree.treeLines = "1";
-   requiredTree.setColumnCount(3);
-	requiredTree.setInitWidths("60|60|180");
-	requiredTree.setHorAligns("LEFT|LEFT|LEFT");
-   requiredTree.SetHeaderCol(0,"Type");
-   requiredTree.SetHeaderCol(1,"Identifier");
-   requiredTree.SetHeaderCol(2,"Description");
-   requiredTree.Editable = true;
-   requiredTree.SetColumnProperties("type=noedit",0);
-   requiredTree.SetColumnProperties("type=noedit",1);
-   requiredTree.SetColumnProperties("type=noedit",2);
-
+	requiredTreeControl=document.requiredTree;
+	requiredTreeControl.Delimeter = "|";
+	requiredTreeControl.DrawGrid = true;
+	requiredTreeControl.HeaderBGColor = "#d4d0c8";
+	requiredTreeControl.SelBGColor = "#FFFF00";
+	requiredTreeControl.ColumnDraggable = false;
+	requiredTreeControl.noSort = true;
+	requiredTreeControl.treeLines = "1";
+   requiredTreeControl.setColumnCount(3);
+	requiredTreeControl.setInitWidths("60|60|180");
+	requiredTreeControl.setHorAligns("LEFT|LEFT|LEFT");
+   requiredTreeControl.SetHeaderCol(0,"Type");
+   requiredTreeControl.SetHeaderCol(1,"Identifier");
+   requiredTreeControl.SetHeaderCol(2,"Description");
+   requiredTreeControl.Editable = true;
+   requiredTreeControl.SetColumnProperties("type=noedit",0);
+   requiredTreeControl.SetColumnProperties("type=noedit",1);
+   requiredTreeControl.SetColumnProperties("type=noedit",2);
+   isRequiredTree = true
 </script>
 <script language="jscript" for="requiredTree" event="GridClick(rowId, col)">
   onRequiredClick(rowId, col);
+  requiredTreeControl.setSelectedRow(rowId, false, false);
+  return true;
 </script>
 <script language="jscript" for="requiredTree" event="GridDoubleClick(rowId)">
 </script>
@@ -1000,28 +1055,32 @@ function onMenuNot(id,r,c) {
 
 <script language="jscript" for="notTree" event="GridStart(isSuccess)">
 	// ----  NOT TREE -----------------------------------------------------
-	notTree.Delimeter = "|";
-	notTree.DrawGrid = true;
-	notTree.HeaderBGColor = "#d4d0c8";
-	notTree.SelBGColor = "#FFFF00";
-	notTree.ColumnDraggable = false;
-	notTree.noSort = true;
-	notTree.treeLines = "1";
-   notTree.setColumnCount(3);
-	notTree.setInitWidths("60|60|180");
-	notTree.setHorAligns("LEFT|LEFT|LEFT");
-   notTree.SetHeaderCol(0,"Type");
-   notTree.SetHeaderCol(1,"Identifier");
-   notTree.SetHeaderCol(2,"Description");
-   notTree.Editable = true;
-   notTree.SetColumnProperties("type=noedit",0);
-   notTree.SetColumnProperties("type=noedit",1);
-   notTree.SetColumnProperties("type=noedit",2);
+	notTreeControl=document.notTree;
+	notTreeControl.Delimeter = "|";
+	notTreeControl.DrawGrid = true;
+	notTreeControl.HeaderBGColor = "#d4d0c8";
+	notTreeControl.SelBGColor = "#FFFF00";
+	notTreeControl.ColumnDraggable = false;
+	notTreeControl.noSort = true;
+	notTreeControl.treeLines = "1";
+   notTreeControl.setColumnCount(3);
+	notTreeControl.setInitWidths("60|60|180");
+	notTreeControl.setHorAligns("LEFT|LEFT|LEFT");
+   notTreeControl.SetHeaderCol(0,"Type");
+   notTreeControl.SetHeaderCol(1,"Identifier");
+   notTreeControl.SetHeaderCol(2,"Description");
+   notTreeControl.Editable = true;
+   notTreeControl.SetColumnProperties("type=noedit",0);
+   notTreeControl.SetColumnProperties("type=noedit",1);
+   notTreeControl.SetColumnProperties("type=noedit",2);
+   isNotTree=true;
 
    affectedOnLoad();
 </script>
 <script language="jscript" for="notTree" event="GridClick(rowId, col)">
   onNotClick(rowId, col);
+  notTreeControl.setSelectedRow(rowId, false, false);
+  return true;
 </script>
 <script language="jscript" for="notTree" event="GridDoubleClick(rowId)">
 </script>
@@ -1069,11 +1128,10 @@ function onMenuNot(id,r,c) {
 </script>
 
 <script language="jscript" for="toolbar" event="Onload()">
-  toolbar.setImageBase("../cbin/");
-  toolbar.loadXML("../solutions/CMIIAffectedItemsWizard/CMII_AnalysisDialogToolbar.xml");
-  toolbar.show();
-  //toolbar.showLabels(true);
-
+  toolbarControl = document.toolbar;
+  toolbarControl.setImageBase("../cbin/");
+  toolbarControl.loadToolbarFromStr('<toolbarapplet bgcolor="#d4d0c8" on_click="onToolbarClick" buttonstyle="windows" buttonsize="26,22" top_border="0" bottom_border="1" font="Arial-8"><toolbar id="main"><edit id="item" label="Lookup:" text="" size="20" font="Arial-8"/><separator/><choice id="type" size="10" font="Arial-8"><choiceitem>Part</choiceitem><choiceitem>Document</choiceitem></choice><separator/><button image="icons/20x20keysearch.gif" id="findItem" tooltip="New Search" statusmsg="Search for a Part/Document"></button><separator/><button image="../images/icons/20x20/20x20_checkmark.gif" id="save" tooltip="Save Changes and Exit" statusmsg="Save Changes and Exit"></button><button image="../images/icons/20x20/20x20_exit_door.gif" id="exit" tooltip="Exit Without Saving"  statusmsg="Exit Without Saving"></button></toolbar></toolbarapplet>');
+  toolbarControl.show();
   active_slot.innerHTML="Active Item:";
 </script>
 <script language="jscript" for="toolbar" event="Onclick(tbItem)">
@@ -1083,22 +1141,6 @@ function onMenuNot(id,r,c) {
 
 <body topmargin="0" leftmargin="7" bgcolor= "#d4d0c8" rightmargin="1" bottommargin="0" style="background-color:#d4d0c8;">
 <table border="0" cellpadding="0" cellspacing="0" width="100%">
-	<tr valign="top" height="28" width = "100%" bgColor="buttonface"  >
-  <td>
- <button type="button" onclick="JavaScript: onTbItemClick(this)" id="ready_btn" name="ready_btn"  TABINDEX="1">
-  <img src="../images/icons/20x20/20x20_checkmark.gif" border='0' TITLE = "Return Selected">
- </button>
- <script>var ready_btn = this.document.all.ready_btn;</script>
- <button type="button" onclick="JavaScript: onTbItemClick(this)" id="set_nothing" name="set_nothing" TABINDEX="2">
-  <img src="../images/icons/16x16/16x16_redx.gif" border='0' TITLE = "Clear Selection">
- </button>
- <script>var set_nothingButton = this.document.all.set_nothing;</script>
- <button type="button" height="10" onclick="JavaScript: onTbItemClick(this)" id="exit" name="exit" TABINDEX="3">
-   <img src="../images/icons/20x20/20x20_exit_door.gif" border='0' TITLE = "Exit">
- </button>
- <script>var exitButton = this.document.all.exit;</script>
-</td>
-</tr>
 <tr height="28px">
 	<td align="left"   width="40%" id="active_slot" ></td>
 	<td align="right"  width="55%"  id="toolbar_slot" >
@@ -1152,7 +1194,7 @@ function onMenuNot(id,r,c) {
 		<table  border="0" cellpadding="0" cellspacing="3">
 		<tr>
 			<td>
-			<INPUT type="button" value=">>>" size="4" name="userAddToAffected" disabled="true" onclick="addToTheRight('affectedTree');">
+			<INPUT type="button" value=">>>" size="4" name="userAddToAffected" id="userAddToAffected" disabled="true" onclick="addToTheRight(affectedTreeControl,'affectedTreeControl');">
 			</td>
 			<td>
 			<font size="3">Affected Items</font>
@@ -1169,7 +1211,7 @@ function onMenuNot(id,r,c) {
 		</tr>
 		<tr>
 			<td>
-			<INPUT type="button" value=">>>" name="userAddToRequired" disabled="true"  onclick="addToTheRight('requiredTree');">
+			<INPUT type="button" value=">>>" name="userAddToRequired" id="userAddToRequired" disabled="true"  onclick="addToTheRight(requiredTreeControl,'requiredTreeControl');">
 			</td>
 			<td>
 			<font size="3">Needs Review</font>
@@ -1186,7 +1228,7 @@ function onMenuNot(id,r,c) {
 		</tr>
 		<tr>
 			<td>
-			<INPUT type="button" value=">>>" name="userAddToNotAffected" disabled="true" onclick="addToTheRight('notTree');">
+			<INPUT type="button" value=">>>" name="userAddToNotAffected" id="userAddToNotAffected" disabled="true" onclick="addToTheRight(notTreeControl,'notTreeControl');">
 			</TD>
 			<td>
 			<font size="3">Not Affected</font>
@@ -1209,4 +1251,19 @@ function onMenuNot(id,r,c) {
 </tr>
 </table>
 </body>
-</html>
+</html>]]></html_code>
+      <is_visible>1</is_visible>
+      <list_no_blank>0</list_no_blank>
+      <name>html0</name>
+      <positioning>absolute</positioning>
+      <sort_order>128</sort_order>
+      <source_id keyed_name="AF7837A4CE9848ECAD1B1FA282616A4B" type="Body">AF7837A4CE9848ECAD1B1FA282616A4B</source_id>
+      <tab_stop>1</tab_stop>
+      <x>0</x>
+      <y>0</y>
+     </Item>
+    </Relationships>
+   </Item>
+  </Relationships>
+ </Item>
+</AML>

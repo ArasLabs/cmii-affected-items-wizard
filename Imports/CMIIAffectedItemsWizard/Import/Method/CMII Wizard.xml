@@ -1,0 +1,54 @@
+<AML>
+ <Item type="Method" id="A301299C3E404AC192E81A258D252247" action="add">
+  <method_code><![CDATA[// CMII wizard opener
+// 10.17.2006   peter
+// 09.12.2007
+// =====================================================================
+var myInnovator = document.frames[1].document.thisItem.newInnovator();
+
+// 1) Open a form with the controls and fields that are needed
+// 2) That form, has an on-load event that
+//     a) calls a server method to run the query
+//     b) populates the controls on the form
+
+// Open the Dialog + Form that shows the Wizard
+var formItem = myInnovator.getItemByKeyedName("Form","CMII Affected Items Wizard"); 
+if (!formItem) {return false;} 
+var formId = formItem.getID(); 
+if (!formId) {return false;} 
+var title = "CMII_Affected_Items_Wizard";  
+
+var param   = new Object();
+param.item	= document.frames[1].document.thisItem;
+param.aras  = opener.top.aras;
+param.title  = title; 
+param.formId = formId; 
+param.innovator = myInnovator; 
+
+var q = new Item("Form", "get"); 
+q.setAttribute("select", "width,height"); 
+q.setProperty("id", formId); 
+var r = q.apply(); 
+if ( r.isError() ) { 
+  this.showError( r ); 
+  return false; 
+} 
+    
+var width  = r.getProperty("width"); 
+var height = r.getProperty("height"); 
+if (!width)  {width  = 850;} 
+if (!height) {height = 650;} 
+    
+var Changes = showModalDialog("ShowFormAsADialog.html", param, 
+               "dialogHeight:" + height + "px; dialogWidth:" + width + "px; " + 
+               "status:0; help:0; resizable:1; scroll:0;"); 
+
+if (Changes) {
+	// need to force a repaint of the relationship grid
+	document.frames[2].iframesCollection[document.frames[2].currTabID].contentWindow.doSearch(1);
+}
+]]></method_code>
+  <method_type>JavaScript</method_type>
+  <name>CMII Wizard</name>
+ </Item>
+</AML>

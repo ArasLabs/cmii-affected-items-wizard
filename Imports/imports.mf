@@ -1,5 +1,5 @@
 <imports>
-  <package name="com.aras.innovator.solution.CMIIAffectedItemsWizard" path=".\">
+  <package name="com.aras.innovator.solution.CMIIAffectedItemsWizard" path="CMIIAffectedItemsWizard\Import">
     <dependson name="com.aras.innovator.solution.PLM" />
   </package>
 </imports>

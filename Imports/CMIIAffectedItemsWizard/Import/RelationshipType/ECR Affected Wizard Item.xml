@@ -51,13 +51,13 @@
       <readonly>0</readonly>
       <sort_order>512</sort_order>
       <source_id keyed_name="ECR Affected Wizard Item" type="ItemType" name="ECR Affected Wizard Item">20DA1961A6554E32830C5E7CCDBBB8E1</source_id>
-      </Item>
+     </Item>
     </Relationships>
    </Item>
   </relationship_id>
   <sort_order>512</sort_order>
   <source_id keyed_name="ECR" type="ItemType" name="ECR">2D4799413792453DA08C1EDE6AA22A76</source_id>
-  </Item>
+ </Item>
  <Item type="View" action="delete" where="source_id='20DA1961A6554E32830C5E7CCDBBB8E1'"></Item>
  <Item type="Form" action="delete" where="name='ECR Affected Wizard Item'"></Item>
 </AML>

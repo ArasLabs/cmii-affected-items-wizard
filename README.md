@@ -10,12 +10,14 @@ This project and the following release notes have been migrated from the old Ara
 
 Release | Notes
 --------|--------
+[v4](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v4) | 09/27/2007 (Peter) this release was packaged after the CMII Conference in Washington. Now supports version 8.1.1 and has improved error handling. The entre solution is now a package (no external files).
 [v1](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v1) | Initial Release - the result of the RobMcAveney, Peter Schroer and Mike Gavlak collaboration
 
 #### Supported Aras Versions
 
 Project | Aras
 --------|------
+[v4](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v4) | 8.1.1
 [v1](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v1) | 8.0.0
 
 ## Installation
@@ -28,7 +30,6 @@ Project | Aras
 1. Aras Innovator installed
 2. Aras Package Import tool
 3. **CMIIAffectedItemsWizard** import package
-4. **CMIIAffectedItemsWizard** code tree patch
 
 ### Install Steps
 
@@ -43,9 +44,6 @@ Project | Aras
 7. Select Type = **Merge** and Mode = **Thorough Mode**.
 8. Click **Import** in the top left corner.
 9. Close the Aras Package Import tool.
-10. Backup your code tree (the Aras install directory) and save the backup in a safe place.
-11. Copy the `Innovator/` folder from the `CodeTree/` directory and paste it into the root directory of your Aras installation. 
-12. Clear your browser cache before logging in to Aras.
 
 ## Contributing
 
