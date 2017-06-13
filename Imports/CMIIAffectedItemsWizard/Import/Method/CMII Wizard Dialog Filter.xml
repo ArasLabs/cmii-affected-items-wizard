@@ -1,0 +1,19 @@
+﻿<AML>
+ <Item type="Method" id="35CEA013D2D3405781611E1B01F33E4A" action="add">
+  <method_code><![CDATA[//  Method to assist in filtering of the lookup in CMII Wizard
+//  this method connected to the OnSearch event of the "action" property of itemType "ECR Affected Wizard Item"
+// 06.27.2008  peter   added with the 8.2, 9.0.1 version of Wizard.
+//
+//
+// ====================================================================
+
+var idLIST = inArgs.itemSelectedID;
+if (idLIST=="") return("");
+
+inArgs.QryItem.item.setAttribute("idlist",idLIST);
+
+return("");]]></method_code>
+  <method_type>JavaScript</method_type>
+  <name>CMII Wizard Dialog Filter</name>
+ </Item>
+</AML>

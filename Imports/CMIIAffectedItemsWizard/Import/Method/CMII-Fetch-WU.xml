@@ -1,4 +1,4 @@
-<AML>
+﻿<AML>
  <Item type="Method" id="5E437890A18A49B48069AC0E0D78CA32" action="add">
   <comments>CMII fetches an inverted structure for the Wizard</comments>
   <method_code><![CDATA['   WU explosion -   then walk back down returning the sparse BOM of the TOP Items.
@@ -18,11 +18,12 @@
 '
 ' ' this instructs the compiler to use an alternate template in method_config.xml  that allows Functions
 'MethodTemplateName=VBMain;
+Dim DEBUG = 0
 
 Function Main() As Item
 	Dim inItem As Item
     inItem= Me.getItemsByXpath("//Item/Item").getItemByIndex(0)
-    ' CCO.Utilities.WriteDebug("wu", "InDom= " & inItem.dom.innerxml)
+    If DEBUG=1 Then CCO.Utilities.WriteDebug("wu", "InDom= " & inItem.dom.innerxml)
     ' system.diagnostics.debugger.break()     
 	Dim Parts As Item =Me.newItem()   '  this holds the list of Part items for parts that have been processed already, so we don't process them again.
 	Dim Final As Item =Me.newItem()   '  this holds the final list of items, structured as top-down to return to the client
@@ -46,7 +47,7 @@ End Function
 '=========================================================================
 
 Private Function ExplodedWU(seedID, seedTYPE, Parts, Final, path)   
-    ' CCO.Utilities.WriteDebug("wu", "Exploding " &  seedID)
+    If DEBUG=1 Then CCO.Utilities.WriteDebug("wu", "ExplodingWU()  " &  seedID & " " & seedTYPE)
 
     Dim Result
     Dim Query= Parts.newItem()
@@ -59,12 +60,15 @@ Private Function ExplodedWU(seedID, seedTYPE, Parts, Final, path)
   ' first test if this Part has any Parents
     If seedTYPE = "Part" Then
        Query.loadAML("<Item type='Part' action='get' select='is_current,item_number,name'><is_current>1</is_current><Relationships><Item type='Part BOM' action='get' select='source_id,related_id'><related_id>" & seedID  & "</related_id></Item></Relationships></Item>")
+       If DEBUG=1 Then CCO.Utilities.WriteDebug("wu", Query.dom.outerxml )
        Result=Query.apply() 
      Else  ' Assume Document
        Query.loadAML("<Item type='Part' action='get' select='is_current,item_number,name'><is_current>1</is_current><Relationships><Item type='Part Document' action='get' select='source_id,related_id'><related_id>" & seedID  & "</related_id></Item></Relationships></Item>")
+       If DEBUG=1 Then CCO.Utilities.WriteDebug("wu", Query.dom.outerxml )
        Result=Query.apply() 
     End If
-    WUitems= Result.getItemsByXPath("//Envelope/Body/Result/Item[@type='Part']")  
+    If DEBUG=1 Then CCO.Utilities.WriteDebug("wu", Result.dom.outerxml)
+    WUitems= Result.getItemsByXPath("//Result/Item[@type='Part']")  
     If WUitems.getItemCount() =  0 Then
        ' system.diagnostics.debugger.break()    
        '  No parents - this is a top - Add it to TOP and build structure all the way down to the source
@@ -81,7 +85,7 @@ Private Function ExplodedWU(seedID, seedTYPE, Parts, Final, path)
           compTmp.setAttribute("name", partTmp.getAttribute("name") )
           Final.dom.selectSingleNode("//Result").appendChild( compTmp )     
  
-          ' CCO.Utilities.WriteDebug("WU", "adding " & seedTYPE & " " & seedID & " to Final as a Top ")
+          If DEBUG=1 Then CCO.Utilities.WriteDebug("WU", "adding " & seedTYPE & " " & seedID & " to Final as a Top ")
 	   End If
        '  this new top level Part is now in Final (or was in Final).  Add the path down to the seed Item
        BuildTopDown(Parts,Final,path) 
@@ -98,7 +102,7 @@ Private Function ExplodedWU(seedID, seedTYPE, Parts, Final, path)
          BuildTopDown(Parts,Final,  Component.getID() & "|" & path)
          '  Exit Function
       Else
-         ' CCO.Utilities.WriteDebug("WU", "New Component xml = " & Component.getID() & "  " & Component.getProperty("item_number") )
+         If DEBUG=1 Then CCO.Utilities.WriteDebug("WU", "New Component xml = " & Component.getID() & "  " & Component.getProperty("item_number") )
 
          '  add the Part to the Library of Parts - 
          compTmp = Parts.dom.createElement("Item")
@@ -115,7 +119,7 @@ Private Function ExplodedWU(seedID, seedTYPE, Parts, Final, path)
 End Function
 '==========================================================================
 Public Function  BuildTopDown(Parts, Final, path)  
-     ' CCO.Utilities.WriteDebug("WU", "BUILD " & "  " & path)
+     If DEBUG=1 Then CCO.Utilities.WriteDebug("WU", "BUILD " & "  " & path)
      ' system.diagnostics.debugger.break()
      Dim idTmp, currentId As String
      Dim partTmp As Item
@@ -127,14 +131,14 @@ Public Function  BuildTopDown(Parts, Final, path)
        If iCount = 0 Then
           currentId = ids(iCount)
           Xpath = "//Item[@id='" & currentId & "']"
-          ' CCO.Utilities.WriteDebug("WU", "here " & Ubound(ids) & "  set currentID to " & currentId)
-          ' CCO.Utilities.WriteDebug("WU", "XPATH = " & Xpath)
+          If DEBUG=1 Then CCO.Utilities.WriteDebug("WU", "here " & Ubound(ids) & "  set currentID to " & currentId)
+          If DEBUG=1 Then CCO.Utilities.WriteDebug("WU", "XPATH = " & Xpath)
        Else
           idTmp = ids(iCount)
           partTmp = Parts.getItemsByXPath("//Item[@id='" & idTmp & "']").getItemByIndex(0)
           
           compTmp = Final.dom.createElement("Item")
-          ' CCO.Utilities.WriteDebug("WU", "   Adding child=" & idTmp & "  under parent=" & currentId)
+          If DEBUG=1 Then CCO.Utilities.WriteDebug("WU", "   Adding child=" & idTmp & "  under parent=" & currentId)
 
           compTmp.setAttribute("type", partTmp.GetType() )
           compTmp.setAttribute("id", idTmp)
@@ -144,7 +148,7 @@ Public Function  BuildTopDown(Parts, Final, path)
           
           currentId = idTmp 
           Xpath = Xpath & "/Item[@id='" & currentId & "']"
-          ' CCO.Utilities.WriteDebug("WU", "XPATH = " & Xpath)
+          if DEBUG=1 then CCO.Utilities.WriteDebug("WU", "XPATH = " & Xpath)
        End If
      Next
 End Function

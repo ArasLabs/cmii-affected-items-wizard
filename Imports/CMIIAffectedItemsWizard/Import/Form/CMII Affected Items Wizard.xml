@@ -1,4 +1,4 @@
-<AML>
+﻿<AML>
  <Item type="Form" id="DE6BEC40660B499AB3E71AB7055B3243" action="add">
   <description>CMII Affected Items Wizard Dialog</description>
   <height>640</height>
@@ -44,14 +44,10 @@
 						added check for De-select in main grid before executing actions
 						moved toolbar definition internal instead of external XML file
 
+01.25.2008 peter  fix double-click event on main grid and F2 in search
+06.27.2008 peter   added better behaviors on the lookup.  tested for 8.2 and 9.0.1
 
-
-
-						document.writeln('<base HREF="'+top.aras.getScriptsURL()+'" />');
-
-
-
-===========================================================================================
+==========================================================================================
 -->
 <html>
 <head>
@@ -470,19 +466,35 @@ function onToolbarClick(tbItem) {
 	}
 
   	if (tbItemId == "findItem") {
+
 		updateActiveType();
-		if (toolbarControl.getActiveToolbar().getElement('item').getText() !="") {
+		var searchStr = toolbarControl.getActiveToolbar().getElement('item').getText();
+		if (searchStr !="") {
+			toolbarControl.getActiveToolbar().getElement('item').setText("");
 			// see if this is a valid part
 			var qry = innovator.newItem();
-			qry.loadAML("<Item type='" + ActiveType + "' select='item_number,name' action='get'><is_current>1</is_current><item_number>" + toolbarControl.getActiveToolbar().getElement('item').getText() + "</item_number></Item>");
+			qry.loadAML("<Item type='" + ActiveType + "' select='item_number,name' action='get'><is_current>1</is_current><or><item_number condition='like'>%" + searchStr + "%</item_number><name condition='like'>%" + searchStr + "%</name></or></Item>");
+
 			qry = qry.apply();
 			var Items = qry.getItemsByXPath("//Item[@type='" + ActiveType + "']");
-			if (Items.getItemCount() > 0) {
+			if (Items.getItemCount() > 1) {
+				// need to open the search dialog with a prefilled list.
+				var idlist = "";
+				var myItems = Items.getItemsByXpath("//Item[@type='" + ActiveType + "']");
+				for (var m=0; m< myItems.getItemCount(); m++) {
+				   if (m==0)
+				   	idlist=myItems.getItemByIndex(m).getID();
+				   else
+				   	idlist+=","+myItems.getItemByIndex(m).getID();
+				}
+				setTimeout('openItemBrowserFiltered("' + idlist + '")',1);
+				return;
+			}
+			if (Items.getItemCount() == 1) {
 				var Item = Items.getItemByIndex(0);
 				loadItem(Item);
 				return;
 			}
-			toolbarControl.getActiveToolbar().getElement('item').setText("");
 		}
 		setTimeout('openItemBrowser()',1);
 		return;
@@ -491,6 +503,22 @@ function onToolbarClick(tbItem) {
 
 function openItemBrowser() {
    var param = {aras:window.top.aras,itemtypeName:ActiveType};
+   var res = showModalDialog(top.aras.getScriptsURL()+'searchDialog.html', param, 'dialogHeight:450px; dialogWidth:700px; status:0; help:0; resizable:1');
+	if (res == undefined) return;
+	var qry = innovator.newItem();
+	qry.loadAML("<Item type='" + ActiveType + "' select='item_number,name' action='get' id='" + res.itemID + "'></Item>");
+	qry = qry.apply();
+	var Items = qry.getItemsByXPath("//Item[@type='" + ActiveType + "']");
+	if (Items.getItemCount() > 0) {
+		var Item = Items.getItemByIndex(0);
+		loadItem(Item);
+	}
+}
+
+function openItemBrowserFiltered(fakeProp) {
+
+   var param = {aras:window.top.aras,itemtypeName:ActiveType, sourceItemTypeName:'ECR Affected Wizard Item',sourcePropertyName:'action', itemSelectedID:fakeProp };
+
    var res = showModalDialog(top.aras.getScriptsURL()+'searchDialog.html', param, 'dialogHeight:450px; dialogWidth:700px; status:0; help:0; resizable:1');
 	if (res == undefined) return;
 	var qry = innovator.newItem();
@@ -686,6 +714,8 @@ function loadTreeMultiWU(id,type,item_number, name) {
 		alert(qry.getErrorDetail() );
 		return;
 	}
+	//alert(qry.node.xml);
+
    var Items = qry.getItemsByXPath("//Result/Item");
   	for (var i=0; i < Items.getItemCount(); i++) {
 	   var Item = Items.getItemByIndex(i);
@@ -804,14 +834,12 @@ function UpdateTreeActions() {
 	}
 }
 
-
 function onRowSelect() {
 	requiredTreeControl.deselect();
 	notTreeControl.deselect();
 	affectedTreeControl.deselect();
 	treeControl.deselect();
 }
-
 
 function onAffectedClick() {
 	onClick(affectedTreeControl,affectedTreeControl.cells(affectedTreeControl.getSelectedId(),2).getValue(),affectedTreeControl.cells(affectedTreeControl.getSelectedId(),3).getValue());
@@ -853,7 +881,7 @@ function onClick(whichTree,whichItemNumber,whichName) {
 }
 function onTreeDoubleClick() {
 	updateActiveType();
-	whichTree = tree;
+	whichTree = treeControl;
 	var r = whichTree.getSelectedId();
 	ActiveType      = whichTree.cells(r,1).getValue();
 	whichItemNumber = whichTree.cells(r,0).getValue();
@@ -1252,6 +1280,7 @@ function onMenuNot(id,r,c) {
 </table>
 </body>
 </html>]]></html_code>
+      <is_disabled>0</is_disabled>
       <is_visible>1</is_visible>
       <list_no_blank>0</list_no_blank>
       <name>html0</name>

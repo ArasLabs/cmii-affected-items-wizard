@@ -1,4 +1,4 @@
-<AML>
+﻿<AML>
  <Item type="RelationshipType" id="6ADCEB86424C4EF18A18616BD515AF79" action="add" dependencyLevel="0">
   <auto_search>1</auto_search>
   <behavior>float</behavior>
@@ -51,6 +51,18 @@
       <readonly>0</readonly>
       <sort_order>512</sort_order>
       <source_id keyed_name="ECR Affected Wizard Item" type="ItemType" name="ECR Affected Wizard Item">20DA1961A6554E32830C5E7CCDBBB8E1</source_id>
+      <Relationships>
+       <Item type="Grid Event" id="D139916826504B45A1843AF5B52483B8" action="add">
+        <grid_event>onsearchdialog</grid_event>
+        <related_id keyed_name="CMII Wizard Dialog Filter" type="Method">
+         <Item type="Method" action="get" select="id">
+          <name>CMII Wizard Dialog Filter</name>
+         </Item>
+        </related_id>
+        <sort_order>128</sort_order>
+        <source_id keyed_name="action" type="Property">01D3AC93F0F4479F8628BC309F5A1F17</source_id>
+       </Item>
+      </Relationships>
      </Item>
     </Relationships>
    </Item>
