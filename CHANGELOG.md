@@ -1,3 +1,9 @@
+## V9.0 of the CMII Affected Items Wizard
+
+Changes:
+
+- Tested for v9.3
+
 ## V8 of the CMII Affected Items Wizard
 
 Changes:

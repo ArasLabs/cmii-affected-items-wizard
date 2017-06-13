@@ -10,6 +10,7 @@ This project and the following release notes have been migrated from the old Ara
 
 Release | Notes
 --------|--------
+[v9](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v9) | 9.13.2011 Updated for compatibility with 9.3 (v8.2 should be used for Aras Innovator versions prior to 9.3)
 [v8.2](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v8.2) | 09.21.2010 Updated merge additional changes
 [v8.1](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v8.1) | 02.04.2010 Updated to remove Default Life Cycle from ECR Affected Wizard Item ItemType.
 [v8](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v8) | 04.08.2009 Updated for Version 9.1, and integrated to the new Simple ECO itemType
@@ -22,6 +23,7 @@ Release | Notes
 
 Project | Aras
 --------|------
+[v9](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v9) | 9.3
 [v8.2](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v8.2) | 9.1
 [v8.1](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v8.1) | 9.1
 [v8](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v8) | 9.1

@@ -1,4 +1,4 @@
-﻿<AML>
+<AML>
  <Item type="Form" id="DE6BEC40660B499AB3E71AB7055B3243" action="add">
   <classification>/*</classification>
   <description>CMII Affected Items Wizard Dialog</description>
@@ -1171,7 +1171,6 @@ function onMenuNot(id,r,c) {
 
 <script language="jscript" for="toolbar" event="Onload()">
   toolbarControl = document.toolbar;
-  toolbarControl.setImageBase("../cbin/");
   toolbarControl.loadToolbarFromStr('<toolbarapplet bgcolor="#d4d0c8" on_click="onToolbarClick" buttonstyle="windows" buttonsize="26,22" top_border="0" bottom_border="1" font="Arial-8"><toolbar id="main"><edit id="item" label="Lookup:" text="" size="20" font="Arial-8"/><separator/><choice id="type" size="10" font="Arial-8"></choice><separator/><button image="icons/20x20keysearch.gif" id="findItem" tooltip="New Search" statusmsg="Search for a Part/Document"></button><separator/><button image="../images/icons/20x20/20x20_checkmark.gif" id="save" tooltip="Save Changes and Exit" statusmsg="Save Changes and Exit"></button><button image="../images/icons/20x20/20x20_exit_door.gif" id="exit" tooltip="Exit Without Saving"  statusmsg="Exit Without Saving"></button></toolbar></toolbarapplet>');
   toolbarControl.show();
   active_slot.innerHTML="Active Item:";
