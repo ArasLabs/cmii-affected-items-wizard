@@ -10,6 +10,7 @@ This project and the following release notes have been migrated from the old Ara
 
 Release | Notes
 --------|--------
+[v8.2](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v8.2) | 09.21.2010 Updated merge additional changes
 [v8.1](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v8.1) | 02.04.2010 Updated to remove Default Life Cycle from ECR Affected Wizard Item ItemType.
 [v8](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v8) | 04.08.2009 Updated for Version 9.1, and integrated to the new Simple ECO itemType
 [v7](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v7) | 01.21.2009 (peter) updated and tested on v9.0.2 of Innovator. 3 package changes: (1) Removed the error message about missing ItemType when there are un-saved Affected items when the Wizard is opened (2) List of change controlled itemtypes is now dynamic. For example, if a new itemType named Tool is created with a Relationship "Part Tool" then the wizard will adapt to this new itemType. This removes the hardcoding of Part and Document as the only controlled items. (3) CMII Wizard is now also connected to the ECN.
@@ -21,6 +22,7 @@ Release | Notes
 
 Project | Aras
 --------|------
+[v8.2](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v8.2) | 9.1
 [v8.1](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v8.1) | 9.1
 [v8](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v8) | 9.1
 [v7](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v7) | 9.0.2

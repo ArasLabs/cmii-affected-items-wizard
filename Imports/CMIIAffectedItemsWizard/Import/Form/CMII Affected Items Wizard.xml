@@ -205,6 +205,7 @@ function affectedOnLoad() {    //fires when the last grid "notTree" is loaded an
 		if (type==undefined) {
 
 			var tmpItem = Item.getPropertyItem("affected_id")
+			if (tmpItem == null) continue;
 			type = tmpItem.getType();
 
 		}
@@ -531,7 +532,7 @@ function onToolbarClick(tbItem) {
 
 function openItemBrowser() {
    var param = {aras:window.top.aras,itemtypeName:ActiveType};
-   var res = showModalDialog(top.aras.getScriptsURL()+'searchDialog.html', param, 'dialogHeight:450px; dialogWidth:700px; status:0; help:0; resizable:1');
+   var res = showModalDialog(top.aras.getScriptsURL()+'searchDialog.html', param, 'dialogHeight:450px; dialogWidth:950px; status:0; help:0; resizable:1');
 	if (res == undefined) return;
 	var qry = innovator.newItem();
 	qry.loadAML("<Item type='" + ActiveType + "' select='item_number,name' action='get' id='" + res.itemID + "'></Item>");
@@ -547,7 +548,7 @@ function openItemBrowserFiltered(fakeProp) {
 
    var param = {aras:window.top.aras,itemtypeName:ActiveType, sourceItemTypeName:'ECR Affected Wizard Item',sourcePropertyName:'action', itemSelectedID:fakeProp };
 
-   var res = showModalDialog(top.aras.getScriptsURL()+'searchDialog.html', param, 'dialogHeight:450px; dialogWidth:700px; status:0; help:0; resizable:1');
+   var res = showModalDialog(top.aras.getScriptsURL()+'searchDialog.html', param, 'dialogHeight:450px; dialogWidth:950px; status:0; help:0; resizable:1');
 	if (res == undefined) return;
 	var qry = innovator.newItem();
 	qry.loadAML("<Item type='" + ActiveType + "' select='item_number,name' action='get' id='" + res.itemID + "'></Item>");
