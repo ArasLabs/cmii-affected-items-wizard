@@ -45,7 +45,13 @@
 						moved toolbar definition internal instead of external XML file
 
 01.25.2008 peter  fix double-click event on main grid and F2 in search
-06.27.2008 peter   added better behaviors on the lookup.  tested for 8.2 and 9.0.1
+03.25.2008 peter  changes for ITT to allow many ItemTypes and Many Change Items
+06.26.2008 peter  remove ITT specific ItemTypes.  Added link to ECN
+06.27.2008 peter  added better behaviors on the lookup.  tested for 8.2 and 9.0.1
+01.21.2009 peter  clean-up of No ItemType found error for unsaved Affected items
+						Tested for 9.0.2
+						Aadded automatic lookup of CHangeControlItems so Wizard is more dynamic
+
 
 ==========================================================================================
 -->
@@ -67,6 +73,8 @@ var requiredTreeControl = null;
 var notTreeControl = null;
 var toolbarControl=null;
 
+var ChangeItemTypes = new Object();
+
 top.aras    = dialogArguments.aras;
 var THIS    = dialogArguments.item;
 
@@ -75,6 +83,9 @@ top.aras.uiAddConfigLink2Doc4Assembly(document, "TreeTable");
 
 returnValue = false;
 innovator  	= THIS.newInnovator();
+
+var currItem= "";   // new for ITT
+var currType= "";   // new for ITT
 var currPart= "";
 var currDoc= "";
 var currNumber="";
@@ -86,12 +97,13 @@ var currTabID="";
 var ChangeTypes="";
 var locked = false;
 var ActiveType="Part";
-var DocumentIcon="";
-var PartIcon=""
+
 // IOM function for  THIS.isLocked()  is broken
 if (THIS.getProperty("locked_by_id","")== top.aras.getUserID()  ) locked=true;
 if (THIS.getAttribute("isTemp") == "1") locked=true;
 
+// 03/25/2008 -
+var ParentType = THIS.getType();
 // =====================================================================================
 
 function affectedOnLoad() {    //fires when the last grid "notTree" is loaded and starts.
@@ -100,15 +112,37 @@ function affectedOnLoad() {    //fires when the last grid "notTree" is loaded an
       alert('controls not ready');
       return;
    }
+   //  first 3 house keeping things...  fetch list of allowed CHange Control Types,  The List and Icon definitions
+	var qry = THIS.newItem('Morphae','get');
+	qry.setProperty('source_id','198BF0BCCC364EE29F56434D803D5F1E');  // source = Change Controlled Items
+	qry.setAttribute('select','related_id(name,open_icon)');
+	var Result = qry.apply();
+	if (Result.isError() ) {
+		alert(Result.getErrorDetail() + ':  Unable to load a List of Change Controlled Items');
+		return;
+	}
+	var ChangeControlItems = Result.getItemsByXpath("//Item[@type='ItemType']");
 
-   //  first 2 house keeping things...  fetch list and Icon definitions
+	var ChoiceList = toolbarControl.getActiveToolbar().getElement("type");
+
+	for (var i=0; i < ChangeControlItems.getItemCount(); i++) {
+		var typename = ChangeControlItems.getItemByIndex(i).getProperty("name","na");
+		var iconname = ChangeControlItems.getItemByIndex(i).getProperty("open_icon", "../images/Icons/16x16/16x16_redx.gif");
+
+		// load the value into a Hash object and load into the pull down list
+		ChangeItemTypes[typename] = iconname;
+
+		ChoiceList.add(typename);
+	}
+
+
    // load the values for the pull-down list in the Affected TreeControl.
 	ChangeTypes="";
 	var qry = THIS.newItem();
 	qry.loadAML("<Item type='List' action='get' select='id'><name>Affected Item Actions</name><Relationships><Item type='Value' select='value, label,sort_order' order_by='sort_order'></Item></Relationships></Item>");
 	var Result = qry.apply();
 	if (Result.isError() ) {
-		alert('Unable to load a required List "Affected Item Actions"');
+		alert(Result.getErrorDetail() + ':  Unable to load a required List "Affected Item Actions"');
 		return;
 	}
 	var Lists = Result.getItemsByXPath('//Item[@type="Value"]');
@@ -116,41 +150,22 @@ function affectedOnLoad() {    //fires when the last grid "notTree" is loaded an
 		var Tmp = Lists.getItemByIndex(i).getProperty("value"," ");
 		if (Tmp !="Needs Review" && Tmp !="Not Affected") ChangeTypes += Tmp + "|";
 	}
-	// fetch the icon names
-  	qry = THIS.newItem("ItemType","get")
-  	qry.setAttribute("select","open_icon")
-  	qry.setProperty("name","Document")
-	var Result = qry.apply();
-	if (Result.isError() ) {
-		alert('Unable to load icon path for Document ItemType');
-		return;
-	}
-	DocumentIcon = Result.getItemByIndex(0).getProperty("open_icon","");
-  	qry.setAttribute("select","open_icon")
-  	qry.setProperty("name","Part")
-	var Result = qry.apply();
-	if (Result.isError() ) {
-		alert('Unable to load icon path for Part ItemType');
-		return;
-	}
-	PartIcon = Result.getItemByIndex(0).getProperty("open_icon","");
 
+   // now load the data from the Item.DOM of the ECR/ECN form
+   // 10.18.2006 for v8,  need to force the ECR/ECN window to load the Relationship grid items into the DOM
 
-   // now load the data from the Item.DOM of the ECR form
-   // 10.18.2006 for v8,  need to force the ECR window to load the Relationship grid items into the DOM
-
-	// ask the server for a list of ID's of relatioships
+	// ask the server for a list of IDs of relatioships
 	// then check the dom to see if that id is loaded,
 	// if not,   call a function to load that relationship instance
 
 
-	var relQryItem = THIS.newItem('ECR','get');
-	relQryItem.loadAML("<Item type='ECR' action='get' id='" + THIS.getID() + "' select='id'><Relationships><Item type='ECR Affected Item' action='get' select='id'></Item><Item type='ECR Affected Wizard Item' action='get' select='id'></Item></Relationships></Item>");
+	var relQryItem = THIS.newItem('','');
+	relQryItem.loadAML("<Item type='" + ParentType + "' action='get' id='" + THIS.getID() + "' select='id'><Relationships><Item type='" + ParentType + " Affected Item' action='get' select='id'></Item><Item type='" + ParentType + " Affected Wizard Item' action='get' select='id'></Item></Relationships></Item>");
 	var relSet = relQryItem.apply();
 	if (relSet.isError() ){
 		// alert(relSet.getErrorDetail());
 	}
-	relSet = relSet.getItemsByXPath("//Item[@type='ECR Affected Item']");
+	relSet = relSet.getItemsByXPath("//Item[@type='" + ParentType + " Affected Item']");
 	for (var i=0; i<relSet.getItemCount(); i++) {
 		var ID = relSet.getItemByIndex(i).getID();
 
@@ -158,23 +173,32 @@ function affectedOnLoad() {    //fires when the last grid "notTree" is loaded an
 		var Checker = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@id='" + ID +"']");
 		if (Checker.getItemCount()== 0 ) {
 			// ask the client to load this one into the DOM
-			 var aRel = top.aras.getItemRelationship(THIS.node, "ECR Affected Item", ID, true);
+			 var aRel = top.aras.getItemRelationship(THIS.node, ParentType + " Affected Item", ID, true);
 			 if (!aRel) {
-					top.aras.AlertError('Failed to get the "ECR Affected Item" item.');
+					top.aras.AlertError('Failed to get the "' + ParentType + ' Affected Item" item.');
 					return;
 			 }
 		}
 	}
-   // DOM now has all the rows of ECR Affected Item   loaded
-   // now Query the visible Affected Items with Add/Change/Delete Actions to load the Affected Item's details (not in client dom yet
-	var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='ECR Affected Item']/related_id/Item[@type='Affected Item']");
+   // DOM now has all the rows of ECR/ECN Affected Item   loaded
+   // now Query the visible Affected Items with Add/Change/Delete Actions to load the Affected Items details (not in client dom yet
+	var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='" + ParentType + " Affected Item']/related_id/Item[@type='Affected Item']");
 	for (var i=0; i < Items.getItemCount(); i++) 	{
 		var Item = Items.getItemByIndex(i);
+
 
 		var action 			= Item.getProperty("action");
 		var typeIcon		= Item.getProperty("affected_type");  // now is a Icon by default in 8.0.0
 		var id	= Item.getProperty("affected_id");
 		var type=Item.getPropertyAttribute("affected_id","type")
+
+		// handle the case where the data is not saved yet
+		if (type==undefined) {
+
+			var tmpItem = Item.getPropertyItem("affected_id")
+			type = tmpItem.getType();
+
+		}
 		var number  = " ";
 		var name    = " ";
 
@@ -197,7 +221,7 @@ function affectedOnLoad() {    //fires when the last grid "notTree" is loaded an
 
    // Second - the Hidden structure of  Needs Review and Not Affected  affected items
    // LOAD these items onto the DOM if the are not there yet.
-	relSet = relSet.getItemsByXPath("//Item[@type='ECR Affected Wizard Item']");
+	relSet = relSet.getItemsByXPath("//Item[@type='" + ParentType + " Affected Wizard Item']");
 	for (var i=0; i<relSet.getItemCount(); i++) {
 		var ID = relSet.getItemByIndex(i).getID();
 
@@ -205,15 +229,15 @@ function affectedOnLoad() {    //fires when the last grid "notTree" is loaded an
 		var Checker = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@id='" + ID +"']");
 		if (Checker.getItemCount()== 0 ) {
 			// ask the client to load this one into the DOM
-			 var aRel = top.aras.getItemRelationship(THIS.node, "ECR Affected Wizard Item", ID, true);
+			 var aRel = top.aras.getItemRelationship(THIS.node, ParentType + " Affected Wizard Item", ID, true);
 			 if (!aRel) {
-					top.aras.AlertError('Failed to get the "ECR Affected Item" item.');
+					top.aras.AlertError('Failed to get the ' + ParentType + '" Affected Item" item.');
 					return;
 			 }
 		}
 	}
 
-	var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='ECR Affected Wizard Item']");
+	var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='" + ParentType + " Affected Wizard Item']");
 	for (var i=0; i < Items.getItemCount(); i++) 	{
 		var RelItem = Items.getItemByIndex(i);
 		var Item = RelItem.getItemsByXPath("related_id/Item[@type='Affected Item']").getItemByIndex(0);
@@ -274,7 +298,7 @@ function saveExit(save) {
 
 		// ----------- Step One -------------------------------------------------------------------
 		// now load the data from the Item.DOM of the ECR form,  ECR Affected Item Relationship
-		var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='ECR Affected Item']");
+		var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='" + ParentType + " Affected Item']");
 		for (var i=0; i < Items.getItemCount(); i++) 	{
 			var RelItem = Items.getItemByIndex(i);
 			var Item    = RelItem.getItemsByXPath("related_id/Item[@type='Affected Item']").getItemByIndex(0);
@@ -287,7 +311,7 @@ function saveExit(save) {
 			// if Item is found still in Affected Grid,  check for a change of Action
 			if (affectedTreeControl.isItemExists(id) ) {
 				if (affectedTreeControl.cells(id,1).getValue() != originalAction ) {
-					// user changed the action pulled don'tlist
+					// user changed the action pulled dont list
 					THIS.setAttribute("isDirty","1"); // set the CR as dirty
 					if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
 					Item.setProperty("action", affectedTreeControl.cells(id,1).getValue() );
@@ -306,7 +330,7 @@ function saveExit(save) {
 				if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
 				RelItem.setAttribute("action","delete");
 				RelItem.setAttribute("isDirty","1");
-				// notTreeControl.deleteRow(id);  don't delete anymore,  use in Pass 3
+				// notTreeControl.deleteRow(id);  dont delete anymore,  use in Pass 3
 			}
 			// If the Item is in the review needed Tree,  this is a change in Disposition,  delete from DOM,
 			// but leave in grid to become an Add in Pass 3
@@ -324,7 +348,7 @@ function saveExit(save) {
 		// ------------ Step Two --------------------------------------------
 		// loop thru ECR Affected Wizard Item
 		// now load the data from the Item.DOM of the ECR form,  ECR Affected Wizard Item Relationship
-		var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='ECR Affected Wizard Item']");
+		var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='" + ParentType + " Affected Wizard Item']");
 		for (var i=0; i < Items.getItemCount(); i++) 	{
 			var RelItem = Items.getItemByIndex(i);
 			var Item    = RelItem.getItemsByXPath("related_id/Item[@type='Affected Item']").getItemByIndex(0);
@@ -333,7 +357,7 @@ function saveExit(save) {
 			var type	 				= Item.getProperty("affected_type");
 			var id	 				= Item.getProperty("affected_id");
 
-			// if it's now found in the AffectedTree,  user changed the designation, flag a delete in the DOM
+			// if its now found in the AffectedTree,  user changed the designation, flag a delete in the DOM
 			if (affectedTreeControl.isItemExists(id) ) {
 				THIS.setAttribute("isDirty","1"); // set the ECR as dirty
 				if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
@@ -379,7 +403,7 @@ function saveExit(save) {
 			if (rowid !="") {
 				THIS.setAttribute("isDirty","1"); // set the CR as dirty
 				if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
-				var myNewRelItem = innovator.newItem('ECR Affected Item','add');
+				var myNewRelItem = innovator.newItem(ParentType + ' Affected Item','add');
 				myNewRelItem.setAttribute("isTemp","1");
 				myNewRelItem.setAttribute("isDirty","1");
 				var myNewItem = innovator.newItem('Affected Item','add');
@@ -390,10 +414,8 @@ function saveExit(save) {
 				myNewItem.setAttribute("isDirty","1");
 				myNewItem.setPropertyAttribute("affected_id","keyed_name",affectedTreeControl.cells(rowid,3).getValue())
 				myNewItem.setPropertyAttribute("affected_id","type",affectedTreeControl.cells(rowid,0).getValue())
-				if (affectedTreeControl.cells(rowid,0).getValue() == "Part")
-					myNewItem.setProperty("affected_type","<img src='"+PartIcon+"'>");
-				else
-					myNewItem.setProperty("affected_type","<img src='"+DocumentIcon+"'>");
+
+				myNewItem.setProperty("affected_type","<img src='"+ ChangeItemTypes[affectedTreeControl.cells(rowid,0).getValue()] +"'>");
 
 				myNewRelItem.setPropertyItem('related_id',myNewItem);
 				THIS.addRelationship(myNewRelItem);
@@ -408,7 +430,7 @@ function saveExit(save) {
 			if (rowid !="") {
 				THIS.setAttribute("isDirty","1"); // set the ECR as dirty
 				if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
-				var myNewRelItem = innovator.newItem('ECR Affected Wizard Item','add');
+				var myNewRelItem = innovator.newItem(ParentType + ' Affected Wizard Item','add');
 				var myNewItem = innovator.newItem('Affected Item','add');
 				myNewRelItem.setProperty('action','Not Affected');
 				myNewItem.setProperty('affected_type',notTreeControl.cells(rowid,0).getValue() );
@@ -416,10 +438,9 @@ function saveExit(save) {
 				myNewItem.setProperty('action','');
 				myNewItem.setPropertyAttribute("affected_id","keyed_name",notTreeControl.cells(rowid,2).getValue())
 				myNewItem.setPropertyAttribute("affected_id","type",notTreeControl.cells(rowid,0).getValue())
-				if (notTreeControl.cells(rowid,0).getValue() == "Part")
-					myNewItem.setProperty("affected_type","<img src='"+PartIcon+"'>");
-				else
-					myNewItem.setProperty("affected_type","<img src='"+DocumentIcon+"'>");
+
+				myNewItem.setProperty("affected_type","<img src='"+ ChangeItemTypes[notTreeControl.cells(rowid,0).getValue()] +"'>");
+
 				myNewRelItem.setPropertyItem('related_id',myNewItem);
 				THIS.addRelationship(myNewRelItem);
 				notTreeControl.deleteRow(rowid);
@@ -433,7 +454,7 @@ function saveExit(save) {
 			if (rowid !="") {
 				THIS.setAttribute("isDirty","1"); // set the ECR as dirty
 				if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
-				var myNewRelItem = innovator.newItem('ECR Affected Wizard Item','add');
+				var myNewRelItem = innovator.newItem(ParentType + ' Affected Wizard Item','add');
 				var myNewItem = innovator.newItem('Affected Item','add');
 				myNewRelItem.setProperty('action','Needs Review');
 				myNewItem.setProperty('affected_type',requiredTreeControl.cells(rowid,0).getValue() );
@@ -441,10 +462,9 @@ function saveExit(save) {
 				myNewItem.setProperty('action','');
 				myNewItem.setPropertyAttribute("affected_id","keyed_name",requiredTreeControl.cells(rowid,2).getValue())
 				myNewItem.setPropertyAttribute("affected_id","type",requiredTreeControl.cells(rowid,0).getValue())
-				if (requiredTreeControl.cells(rowid,0).getValue() == "Part")
-					myNewItem.setProperty("affected_type","<img src='"+PartIcon+"'>");
-				else
-					myNewItem.setProperty("affected_type","<img src='"+DocumentIcon+"'>");
+
+				myNewItem.setProperty("affected_type","<img src='"+ ChangeItemTypes[requiredTreeControl.cells(rowid,0).getValue()] +"'>");
+
 				myNewRelItem.setPropertyItem('related_id',myNewItem);
 				THIS.addRelationship(myNewRelItem);
 				requiredTreeControl.deleteRow(rowid);
@@ -466,12 +486,11 @@ function onToolbarClick(tbItem) {
 	}
 
   	if (tbItemId == "findItem") {
-
 		updateActiveType();
 		var searchStr = toolbarControl.getActiveToolbar().getElement('item').getText();
 		if (searchStr !="") {
 			toolbarControl.getActiveToolbar().getElement('item').setText("");
-			// see if this is a valid part
+			// see if this is a valid item
 			var qry = innovator.newItem();
 			qry.loadAML("<Item type='" + ActiveType + "' select='item_number,name' action='get'><is_current>1</is_current><or><item_number condition='like'>%" + searchStr + "%</item_number><name condition='like'>%" + searchStr + "%</name></or></Item>");
 
@@ -535,13 +554,9 @@ function loadItem(Item) {
 	updateActiveType();
 	//  update the Active Box at the top
 	active_slot.innerHTML="Active " + ActiveType + ":<b>&nbsp;" + Item.getProperty("item_number") + " - " + Item.getProperty("name"," ") + "</b>";
-	if (ActiveType=="Part") {
-		currPart=Item.getID();
-		currDoc = "";
-	} else {
-		currDoc =Item.getID();
-		currPart= "";
-	}
+
+   currItem=Item.getID();
+   currType=ActiveType;
 	currName = Item.getProperty("name"," ");
 	currNumber=Item.getProperty("item_number"," ");
 
@@ -679,10 +694,12 @@ function runRule1(idList) {   //  any new item added to the Affected table,  run
 	   var itemType = itemData[1];
 
 		var qry = innovator.newItem();
+		// finding any Parts that have a relationship to this Thing
 		if (itemType=='Part')
 			qry.loadAML("<Item type='Part' select='item_number,name' action='get'><is_current>1</is_current><Relationships><Item type='Part BOM' action='get' select='related_id'><related_id>" + itemId + "</related_id></Item></Relationships></Item>");
 		else
-			qry.loadAML("<Item type='Part' select='item_number,name' action='get'><is_current>1</is_current><Relationships><Item type='Part Document' action='get' select='related_id'><related_id>" + itemId + "</related_id></Item></Relationships></Item>");
+			qry.loadAML("<Item type='Part' select='item_number,name' action='get'><is_current>1</is_current><Relationships><Item type='Part " + itemType + "' action='get' select='related_id'><related_id>" + itemId + "</related_id></Item></Relationships></Item>");
+
 		qry = qry.apply();
 		var Items = qry.getItemsByXPath("//Result/Item[@type='Part']");
 		for (var j=0; j < Items.getItemCount(); j++) {
@@ -692,9 +709,9 @@ function runRule1(idList) {   //  any new item added to the Affected table,  run
 			var number  = Item.getProperty("item_number");
 			var name    = Item.getProperty("name");
 			// RULE   add this parent Part to the Review Required List
-			//  if it's not already on the review required list
+			//  if it is not already on the review required list
 			//  if it is not already on the affected list
-			//  if it's not already on the notAffected List  (ASK GAVLAK ABOUT THIS ONE);
+			//  if it is not already on the notAffected List  (ASK GAVLAK ABOUT THIS ONE);
 			if (!affectedTreeControl.isItemExists(id) && !requiredTreeControl.isItemExists(id) && !notTreeControl.isItemExists(id))
 		 			requiredTreeControl.addRow(id,type + "|"+ number + "|"+ name,id);
 		}
@@ -714,8 +731,6 @@ function loadTreeMultiWU(id,type,item_number, name) {
 		alert(qry.getErrorDetail() );
 		return;
 	}
-	//alert(qry.node.xml);
-
    var Items = qry.getItemsByXPath("//Result/Item");
   	for (var i=0; i < Items.getItemCount(); i++) {
 	   var Item = Items.getItemByIndex(i);
@@ -746,7 +761,7 @@ function loadTreeMultiWUrecursion(ParentId, ParentItem) {
 function loadTreeBOM(id,type,item_number, name) {
 	uniqueGridId=0;
 	clearGrid(treeControl);
-   if (type=='Document') return;
+   if (type!='Part') return;  // Only makes sense to get a BOM of a Part
 	var statusId = top.aras.showStatusMessage('   Loading ...', '../../images/Animated/ProgressSmall.gif');
 	var MyPid = id + uniqueGridId++;
 	treeControl.insertRoot(MyPid, item_number +"|"+ type +"| "  + "|"+ name,MyPid);
@@ -785,7 +800,7 @@ function loadTreeWU(id,type,item_number, name) {
 	if (type=='Part')
 		qry.loadAML("<Item type='Part' select='item_number,name' action='get'><is_current>1</is_current><Relationships><Item type='Part BOM' action='get' select='related_id'><related_id>" + id + "</related_id></Item></Relationships></Item>");
 	else
-		qry.loadAML("<Item type='Part' select='item_number,name' action='get'><is_current>1</is_current><Relationships><Item type='Part Document' action='get' select='related_id'><related_id>" + id + "</related_id></Item></Relationships></Item>");
+		qry.loadAML("<Item type='Part' select='item_number,name' action='get'><is_current>1</is_current><Relationships><Item type='Part " + type + "' action='get' select='related_id'><related_id>" + id + "</related_id></Item></Relationships></Item>");
    qry = qry.apply();
    var Items = qry.getItemsByXPath("//Result/Item[@type='Part']");
   	for (var i=0; i < Items.getItemCount(); i++) {
@@ -855,13 +870,9 @@ function onClick(whichTree,whichItemNumber,whichName) {
 	updateActiveType();
 	var r = whichTree.getSelectedId();
 	ActiveType = whichTree.cells(r,0).getValue();
-	if (ActiveType=='Part') {
-		currPart = r;
-		currDoc = "";
-	} else {
-		currPart = "";
-		currDoc = r;
-	}
+	currItem=r ;
+	currType=ActiveType
+
    currName=whichName;
    currNumber = whichItemNumber;
 	active_slot.innerHTML="Active " + ActiveType + ":<b>&nbsp;" + currNumber + " - " + currName + "</b>";
@@ -889,13 +900,10 @@ function onTreeDoubleClick() {
 	// note r is the id of the row in order to retrieve the cell contents
 	// now re-assign r to be the real item ID
 	r = whichTree.getUserData(r,"id");
-	if (ActiveType=='Part') {
-		currPart = r;
-		currDoc = "";
-	} else {
-		currPart = "";
-		currDoc = r;
-	}
+
+	currItem = r;
+	currType = ActiveType;
+
    currName=whichName;
    currNumber = whichItemNumber;
 	active_slot.innerHTML="Active " + ActiveType + ":<b>&nbsp;" + currNumber + " - " + currName + "</b>";
@@ -1132,15 +1140,11 @@ function onMenuNot(id,r,c) {
    if (currTabID==TabId) return true;
 	currTabID = TabId;
 	var id="";
-	if (currPart=="" && currDoc=="") return;
+	if (currItem=="" ) return;
 
-	if (currPart !="" ) {
-		id = currPart;
-		ActiveType='Part';
-	} else {
-		id=currDoc;
-		ActiveType='Document';
-	}
+	id = currItem;
+	ActiveType=currType;
+
 	if (currTabID == "wu")
 	{
 		loadTreeWU(id,ActiveType,currNumber,currName)
@@ -1158,7 +1162,7 @@ function onMenuNot(id,r,c) {
 <script language="jscript" for="toolbar" event="Onload()">
   toolbarControl = document.toolbar;
   toolbarControl.setImageBase("../cbin/");
-  toolbarControl.loadToolbarFromStr('<toolbarapplet bgcolor="#d4d0c8" on_click="onToolbarClick" buttonstyle="windows" buttonsize="26,22" top_border="0" bottom_border="1" font="Arial-8"><toolbar id="main"><edit id="item" label="Lookup:" text="" size="20" font="Arial-8"/><separator/><choice id="type" size="10" font="Arial-8"><choiceitem>Part</choiceitem><choiceitem>Document</choiceitem></choice><separator/><button image="icons/20x20keysearch.gif" id="findItem" tooltip="New Search" statusmsg="Search for a Part/Document"></button><separator/><button image="../images/icons/20x20/20x20_checkmark.gif" id="save" tooltip="Save Changes and Exit" statusmsg="Save Changes and Exit"></button><button image="../images/icons/20x20/20x20_exit_door.gif" id="exit" tooltip="Exit Without Saving"  statusmsg="Exit Without Saving"></button></toolbar></toolbarapplet>');
+  toolbarControl.loadToolbarFromStr('<toolbarapplet bgcolor="#d4d0c8" on_click="onToolbarClick" buttonstyle="windows" buttonsize="26,22" top_border="0" bottom_border="1" font="Arial-8"><toolbar id="main"><edit id="item" label="Lookup:" text="" size="20" font="Arial-8"/><separator/><choice id="type" size="10" font="Arial-8"></choice><separator/><button image="icons/20x20keysearch.gif" id="findItem" tooltip="New Search" statusmsg="Search for a Part/Document"></button><separator/><button image="../images/icons/20x20/20x20_checkmark.gif" id="save" tooltip="Save Changes and Exit" statusmsg="Save Changes and Exit"></button><button image="../images/icons/20x20/20x20_exit_door.gif" id="exit" tooltip="Exit Without Saving"  statusmsg="Exit Without Saving"></button></toolbar></toolbarapplet>');
   toolbarControl.show();
   active_slot.innerHTML="Active Item:";
 </script>

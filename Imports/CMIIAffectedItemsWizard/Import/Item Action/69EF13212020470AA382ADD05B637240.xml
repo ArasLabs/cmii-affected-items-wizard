@@ -1,0 +1,20 @@
+﻿<AML>
+ <Item type="Item Action" id="69EF13212020470AA382ADD05B637240" action="add">
+  <related_id keyed_name="CMII Wizard" type="Action">
+   <Item type="Action" id="E8CA0CECF81F4FE8B8842EC34AD1A2A7" action="add">
+    <item_query>___is_new___</item_query>
+    <location>client</location>
+    <method keyed_name="CMII Wizard" type="Method">
+     <Item type="Method" action="get" select="id">
+      <name>CMII Wizard</name>
+     </Item>
+    </method>
+    <name>CMII Wizard</name>
+    <target>none</target>
+    <type>itemtype</type>
+   </Item>
+  </related_id>
+  <sort_order>128</sort_order>
+  <source_id keyed_name="ECN Affected Item" type="ItemType" name="ECN Affected Item">7EA6D421B61A4BEB9F54DF7D1A51B78C</source_id>
+ </Item>
+</AML>
