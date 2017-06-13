@@ -1,0 +1,1212 @@
+<!-- (c) Copyright by Aras Corporation, 2004 - Company Confidential. -->
+
+<!--  Delphi CMII Affected Items Analysis Changes
+
+10-22-2004	peter/johnhutton		Initial implementation of the UI and data model per Delphi Spec.
+03-06-2005  peter                bolted onto the standard PLM 1.0 data model and forms
+											converted to IOM API model instead of top.aras functions (where possible)
+
+03-10-2005 peter   multi-select and implementation of Rule 1
+03-11-2005 update client cache
+04-01-2005 peter   change getUID() to use client-side temp id's to save many roundtrips.
+04-05-2005 peter  toolbar applet replaced with DHTML
+04-11-2005 peter  tabbar replaced with DHTML.  Fixed Save problem when things are re-assigned actions
+04-13-2005 peter  renamed the panel to Needs Review
+04-19-2005 peter  new Active header above tabs
+06-13-2005 peter  added right mouse View buttons
+------------------------------------------------------------------------------------------
+10.17.2006 Peter 	ported to 8.0
+						build as Package (install on top of PE)
+						move the Needs Review and Not Affected action items to a new relationship  "ECR Affected Wizard Item"
+10.19.2006 Peter  added is_current=1 to rule expansion
+10.20.2006 Peter  fixed bug on reloading an unsaved DOM with Needs Review entries
+09.12.2007 peter  moved from external HTML files to Internal Form
+						added check for De-select in main grid before executing actions
+						moved toolbar definition internal instead of external XML file
+===========================================================================================
+-->
+<html>
+<head>
+<link rel="stylesheet" href="../../styles/default.css">
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<script>
+top.aras    = dialogArguments.aras;
+var THIS    = dialogArguments.item;
+
+document.writeln('<base HREF="'+top.aras.getScriptsURL()+'" />');
+</script>
+<script language="JavaScript"  src="../javascript/scriptset2.aspx"></script>
+<script type="text/javascript" src="../javascript/AddConfigurationLink.js">Toolbar;TreeTable;Tabbar;</script>
+<script>
+
+returnValue = false;
+innovator  	= THIS.newInnovator();
+var currPart= "";
+var currDoc= "";
+var currNumber="";
+var currName="";
+var currTree="";
+var uniqueGridId=0;
+var currGrid =null;
+var currTabID="";
+var ChangeTypes="";
+var locked = false;
+var ActiveType="Part";
+var DocumentIcon="";
+var PartIcon=""
+// IOM function for  THIS.isLocked()  is broken
+if (THIS.getProperty("locked_by_id","")== top.aras.getUserID()  ) locked=true;
+if (THIS.getAttribute("isTemp") == "1") locked=true;
+
+// =====================================================================================
+
+function affectedOnLoad() {    //fires when the last grid "notTree" is loaded and starts.
+
+   //  first 2 house keeping things...  fetch list and Icon definitions
+   // load the values for the pull-down list in the Affected Tree.
+	ChangeTypes="";
+	var qry = THIS.newItem();
+	qry.loadAML("<Item type='List' action='get' select='id'><name>Affected Item Actions</name><Relationships><Item type='Value' select='value, label,sort_order' order_by='sort_order'></Item></Relationships></Item>");
+	var Result = qry.apply();
+	if (Result.isError() ) {
+		alert('Unable to load a required List "Affected Item Actions"');
+		return;
+	}
+	var Lists = Result.getItemsByXPath('//Item[@type="Value"]');
+	for (var i=0; i<Lists.getItemCount(); i++) {
+		var Tmp = Lists.getItemByIndex(i).getProperty("value"," ");
+		if (Tmp !="Needs Review" && Tmp !="Not Affected") ChangeTypes += Tmp + "|";
+	}
+	// fetch the icon names
+  	qry = THIS.newItem("ItemType","get")
+  	qry.setAttribute("select","open_icon")
+  	qry.setProperty("name","Document")
+	var Result = qry.apply();
+	if (Result.isError() ) {
+		alert('Unable to load icon path for Document ItemType');
+		return;
+	}
+	DocumentIcon = Result.getItemByIndex(0).getProperty("open_icon","");
+  	qry.setAttribute("select","open_icon")
+  	qry.setProperty("name","Part")
+	var Result = qry.apply();
+	if (Result.isError() ) {
+		alert('Unable to load icon path for Part ItemType');
+		return;
+	}
+	PartIcon = Result.getItemByIndex(0).getProperty("open_icon","");
+
+
+   // now load the data from the Item.DOM of the ECR form
+   // 10.18.2006 for v8,  need to force the ECR window to load the Relationship grid items into the DOM
+
+	// ask the server for a list of ID's of relatioships
+	// then check the dom to see if that id is loaded,
+	// if not,   call a function to load that relationship instance
+
+
+	var relQryItem = THIS.newItem('ECR','get');
+	relQryItem.loadAML("<Item type='ECR' action='get' id='" + THIS.getID() + "' select='id'><Relationships><Item type='ECR Affected Item' action='get' select='id'></Item><Item type='ECR Affected Wizard Item' action='get' select='id'></Item></Relationships></Item>");
+	var relSet = relQryItem.apply();
+	if (relSet.isError() ){
+		// alert(relSet.getErrorDetail());
+	}
+	relSet = relSet.getItemsByXPath("//Item[@type='ECR Affected Item']");
+	for (var i=0; i<relSet.getItemCount(); i++) {
+		var ID = relSet.getItemByIndex(i).getID();
+
+		// check if this is in the DOM
+		var Checker = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@id='" + ID +"']");
+		if (Checker.getItemCount()== 0 ) {
+			// ask the client to load this one into the DOM
+			 var aRel = top.aras.getItemRelationship(THIS.node, "ECR Affected Item", ID, true);
+			 if (!aRel) {
+					top.aras.AlertError('Failed to get the "ECR Affected Item" item.');
+					return;
+			 }
+		}
+	}
+   // DOM now has all the rows of ECR Affected Item   loaded
+   // now Query the visible Affected Items with Add/Change/Delete Actions to load the Affected Item's details (not in client dom yet
+	var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='ECR Affected Item']/related_id/Item[@type='Affected Item']");
+	for (var i=0; i < Items.getItemCount(); i++) 	{
+		var Item = Items.getItemByIndex(i);
+
+		var action 			= Item.getProperty("action");
+		var typeIcon		= Item.getProperty("affected_type");  // now is a Icon by default in 8.0.0
+		var id	= Item.getProperty("affected_id");
+		var type=Item.getPropertyAttribute("affected_id","type")
+		var number  = " ";
+		var name    = " ";
+
+		var qryItem = THIS.newItem(type,'get');
+		qryItem.setID(id);
+		qryItem.setAttribute('select','item_number,itemtype,name');
+
+		var item = qryItem.apply();
+		if (item.isError() ){
+			alert(item.getErrorDetail());
+		} else {
+			if (item.getItemCount()>0 ) {
+				number = item.getItemByIndex(0).getProperty("item_number");
+				name   = item.getItemByIndex(0).getProperty("name");
+				type   = item.getItemByIndex(0).getType();
+			}
+			if (action=="Add" || action=="Change" || action=="Delete")  affectedTree.addRow(id,type + "|"+ action + "|"+ number + "|"+ name,id);
+		}
+	}
+
+   // Second - the Hidden structure of  Needs Review and Not Affected  affected items
+   // LOAD these items onto the DOM if the are not there yet.
+	relSet = relSet.getItemsByXPath("//Item[@type='ECR Affected Wizard Item']");
+	for (var i=0; i<relSet.getItemCount(); i++) {
+		var ID = relSet.getItemByIndex(i).getID();
+
+		// check if this is in the DOM
+		var Checker = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@id='" + ID +"']");
+		if (Checker.getItemCount()== 0 ) {
+			// ask the client to load this one into the DOM
+			 var aRel = top.aras.getItemRelationship(THIS.node, "ECR Affected Wizard Item", ID, true);
+			 if (!aRel) {
+					top.aras.AlertError('Failed to get the "ECR Affected Item" item.');
+					return;
+			 }
+		}
+	}
+
+	var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='ECR Affected Wizard Item']");
+	for (var i=0; i < Items.getItemCount(); i++) 	{
+		var RelItem = Items.getItemByIndex(i);
+		var Item = RelItem.getItemsByXPath("related_id/Item[@type='Affected Item']").getItemByIndex(0);
+
+		var action 			= RelItem.getProperty("action");
+		var typeIcon		= Item.getProperty("affected_type");  // now is a Icon by default in 8.0.0
+
+		var id	= Item.getProperty("affected_id");
+		var type=Item.getPropertyAttribute("affected_id","type")
+		var number  = " ";
+		var name    = " ";
+
+		var qryItem = THIS.newItem(type,'get');
+		qryItem.setID(id);
+		qryItem.setAttribute('select','item_number,itemtype,name');
+
+		var item = qryItem.apply();
+		if (item.isError() ){
+			alert(item.getErrorDetail());
+		} else {
+			if (item.getItemCount()>0 ) {
+				number = item.getItemByIndex(0).getProperty("item_number");
+				name   = item.getItemByIndex(0).getProperty("name");
+				type   = item.getItemByIndex(0).getType();
+			}
+			if (action=="Not Affected")  notTree.addRow(id,type + "|"+ number + "|"+ name,id);
+			if (action=="Needs Review")  requiredTree.addRow(id,type + "|"+ number + "|"+ name,id);
+		}
+	}
+}
+// ============================================================================
+function saveExit(save) {
+	// logic:  1)  loop thru the DOM for ECR Affected Item and see if the same Item exists in the Wizard grids,
+	//					make updates as required
+	//
+	//			  2)	loop loop thru the DOM for ECR Affected Wizard Item and see if the same Item exists in the Wizard grids,
+	//					make updates as required
+	//
+	//			  3)  loop thru what is left in the grids, and create new DOM entries
+	//
+	// Note: will only save changes if the Item was locked by me
+
+
+	// terminate any pending edits
+	notTree.turnEditOff();
+	requiredTree.turnEditOff();
+	tree.turnEditOff();
+	affectedTree.turnEditOff();
+	returnValue = false;
+
+	if (save && locked)  {
+		returnValue = true;
+		// loop thru existing DOM.  for each,  see if it is present in a tree
+		//  if yes,  may need to update the the Action and action flag
+		//  if no,  then flag for delete
+
+		// delete rows from the grids as you go.  The grids are the DB of proposed changes
+
+		// ----------- Step One -------------------------------------------------------------------
+		// now load the data from the Item.DOM of the ECR form,  ECR Affected Item Relationship
+		var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='ECR Affected Item']");
+		for (var i=0; i < Items.getItemCount(); i++) 	{
+			var RelItem = Items.getItemByIndex(i);
+			var Item    = RelItem.getItemsByXPath("related_id/Item[@type='Affected Item']").getItemByIndex(0);
+
+			var originalAction 	= Item.getProperty("action");
+			var type	 				= Item.getProperty("affected_type");
+			var id	 				= Item.getProperty("affected_id");
+
+
+			// if Item is found still in Affected Grid,  check for a change of Action
+			if (affectedTree.isItemExists(id) ) {
+				if (affectedTree.cells(id,1).getValue() != originalAction ) {
+					// user changed the action pulled don'tlist
+					THIS.setAttribute("isDirty","1"); // set the CR as dirty
+					if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
+					Item.setProperty("action", affectedTree.cells(id,1).getValue() );
+					Item.setAttribute("action","edit");
+					Item.setAttribute("isDirty","1");
+					RelItem.setAttribute("action","edit");
+					RelItem.setAttribute("isDirty","1");
+				}
+				affectedTree.deleteRow(id);
+			}
+			// If the Item is in the notTree,  this is a change in Disposition,  delete from DOM,
+			// but leave in grid to become an Add in Pass 3
+			if (notTree.isItemExists(id) ) {
+				// user changed his opinion this editing session
+				THIS.setAttribute("isDirty","1"); // set the CR as dirty
+				if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
+				RelItem.setAttribute("action","delete");
+				RelItem.setAttribute("isDirty","1");
+				// notTree.deleteRow(id);  don't delete anymore,  use in Pass 3
+			}
+			// If the Item is in the review needed Tree,  this is a change in Disposition,  delete from DOM,
+			// but leave in grid to become an Add in Pass 3
+			if (requiredTree.isItemExists(id) ) {
+				// user changed his opinion this editing session
+				THIS.setAttribute("isDirty","1"); // set the CR as dirty
+				if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
+				RelItem.setAttribute("action","delete");
+				RelItem.setAttribute("isDirty","1");
+				// requiredTree.deleteRow(id);
+			}
+		}
+
+
+		// ------------ Step Two --------------------------------------------
+		// loop thru ECR Affected Wizard Item
+		// now load the data from the Item.DOM of the ECR form,  ECR Affected Wizard Item Relationship
+		var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='ECR Affected Wizard Item']");
+		for (var i=0; i < Items.getItemCount(); i++) 	{
+			var RelItem = Items.getItemByIndex(i);
+			var Item    = RelItem.getItemsByXPath("related_id/Item[@type='Affected Item']").getItemByIndex(0);
+
+			var originalAction 	= RelItem.getProperty("action");
+			var type	 				= Item.getProperty("affected_type");
+			var id	 				= Item.getProperty("affected_id");
+
+			// if it's now found in the AffectedTree,  user changed the designation, flag a delete in the DOM
+			if (affectedTree.isItemExists(id) ) {
+				THIS.setAttribute("isDirty","1"); // set the ECR as dirty
+				if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
+				RelItem.setAttribute("action","delete");
+				RelItem.setAttribute("isDirty","1");
+  			   // affectedTree.deleteRow(id);
+			}
+			// if found in the NotAffected Tree, check whether this is a change in disposition
+			if (notTree.isItemExists(id) ) {
+				if (originalAction != 'Not Affected') {
+					// user changed his opinion this editing session
+					THIS.setAttribute("isDirty","1"); // set the ECR as dirty
+					if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
+					RelItem.setProperty("action", "Not Affected");
+					RelItem.setAttribute("action","edit");
+					RelItem.setAttribute("isDirty","1");
+				}
+				notTree.deleteRow(id);
+			}
+			if (requiredTree.isItemExists(id) ) {
+				if (originalAction != 'Needs Review') {
+					// user changed his opinion this editing session
+					THIS.setAttribute("isDirty","1"); // set the ECR as dirty
+					if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
+					RelItem.setProperty("action", "Needs Review");
+					RelItem.setAttribute("action","edit");
+					RelItem.setAttribute("isDirty","1");
+				}
+				requiredTree.deleteRow(id);
+			}
+
+		}
+		// -----------  Step Three   ------------------------------------------------
+		//  now loop through the grids to see what is left,  these are Adds to the Client DOM
+
+		// new Affected Items
+		var rowid="";
+		var itemId="";
+		var ids =affectedTree.getAllItemIds("|");
+		var id_array = ids.split("|");
+		for (var x = 0 ; x < id_array.length; x++) {
+			rowid = id_array[x];
+			if (rowid !="") {
+				THIS.setAttribute("isDirty","1"); // set the CR as dirty
+				if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
+				var myNewRelItem = innovator.newItem('ECR Affected Item','add');
+				myNewRelItem.setAttribute("isTemp","1");
+				myNewRelItem.setAttribute("isDirty","1");
+				var myNewItem = innovator.newItem('Affected Item','add');
+				myNewItem.setProperty('affected_type',affectedTree.cells(rowid,0).getValue() );
+				myNewItem.setProperty('affected_id',rowid);
+				myNewItem.setProperty('action',affectedTree.cells(rowid,1).getValue());
+				myNewItem.setAttribute("isTemp","1");
+				myNewItem.setAttribute("isDirty","1");
+				myNewItem.setPropertyAttribute("affected_id","keyed_name",affectedTree.cells(rowid,3).getValue())
+				myNewItem.setPropertyAttribute("affected_id","type",affectedTree.cells(rowid,0).getValue())
+				if (affectedTree.cells(rowid,0).getValue() == "Part")
+					myNewItem.setProperty("affected_type","<img src='"+PartIcon+"'>");
+				else
+					myNewItem.setProperty("affected_type","<img src='"+DocumentIcon+"'>");
+
+				myNewRelItem.setPropertyItem('related_id',myNewItem);
+				THIS.addRelationship(myNewRelItem);
+				affectedTree.deleteRow(rowid);
+			}
+		}
+		//  new Not Affected
+		ids =notTree.getAllItemIds("|");
+		id_array = ids.split("|");
+		for (var x = 0 ; x < id_array.length; x++) {
+			rowid = id_array[x];
+			if (rowid !="") {
+				THIS.setAttribute("isDirty","1"); // set the ECR as dirty
+				if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
+				var myNewRelItem = innovator.newItem('ECR Affected Wizard Item','add');
+				var myNewItem = innovator.newItem('Affected Item','add');
+				myNewRelItem.setProperty('action','Not Affected');
+				myNewItem.setProperty('affected_type',notTree.cells(rowid,0).getValue() );
+				myNewItem.setProperty('affected_id',rowid);
+				myNewItem.setProperty('action','');
+				myNewItem.setPropertyAttribute("affected_id","keyed_name",notTree.cells(rowid,2).getValue())
+				myNewItem.setPropertyAttribute("affected_id","type",notTree.cells(rowid,0).getValue())
+				if (notTree.cells(rowid,0).getValue() == "Part")
+					myNewItem.setProperty("affected_type","<img src='"+PartIcon+"'>");
+				else
+					myNewItem.setProperty("affected_type","<img src='"+DocumentIcon+"'>");
+				myNewRelItem.setPropertyItem('related_id',myNewItem);
+				THIS.addRelationship(myNewRelItem);
+				notTree.deleteRow(rowid);
+			}
+		}
+		// new Needs Review items
+		ids =requiredTree.getAllItemIds("|");
+		id_array = ids.split("|");
+		for (var x = 0 ; x < id_array.length; x++) {
+			rowid = id_array[x];
+			if (rowid !="") {
+				THIS.setAttribute("isDirty","1"); // set the ECR as dirty
+				if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
+				var myNewRelItem = innovator.newItem('ECR Affected Wizard Item','add');
+				var myNewItem = innovator.newItem('Affected Item','add');
+				myNewRelItem.setProperty('action','Needs Review');
+				myNewItem.setProperty('affected_type',requiredTree.cells(rowid,0).getValue() );
+				myNewItem.setProperty('affected_id',rowid);
+				myNewItem.setProperty('action','');
+				myNewItem.setPropertyAttribute("affected_id","keyed_name",requiredTree.cells(rowid,2).getValue())
+				myNewItem.setPropertyAttribute("affected_id","type",requiredTree.cells(rowid,0).getValue())
+				if (requiredTree.cells(rowid,0).getValue() == "Part")
+					myNewItem.setProperty("affected_type","<img src='"+PartIcon+"'>");
+				else
+					myNewItem.setProperty("affected_type","<img src='"+DocumentIcon+"'>");
+				myNewRelItem.setPropertyItem('related_id',myNewItem);
+				THIS.addRelationship(myNewRelItem);
+				requiredTree.deleteRow(rowid);
+			}
+		}
+	}
+   window.close();
+}
+
+function onToolbarClick(tbItem) {
+	var tbItemId = tbItem.getId();
+  	if (tbItemId == "exit") {
+		saveExit(false);
+		return;
+	}
+  	if (tbItemId == "save") {
+		saveExit(true);
+		return;
+	}
+
+  	if (tbItemId == "findItem") {
+		updateActiveType();
+		if (toolbar.getActiveToolbar().getElement('item').getText() !="") {
+			// see if this is a valid part
+			var qry = innovator.newItem();
+			qry.loadAML("<Item type='" + ActiveType + "' select='item_number,name' action='get'><is_current>1</is_current><item_number>" + toolbar.getActiveToolbar().getElement('item').getText() + "</item_number></Item>");
+			qry = qry.apply();
+			var Items = qry.getItemsByXPath("//Item[@type='" + ActiveType + "']");
+			if (Items.getItemCount() > 0) {
+				var Item = Items.getItemByIndex(0);
+				loadItem(Item);
+				return;
+			}
+			toolbar.getActiveToolbar().getElement('item').setText("");
+		}
+		setTimeout('openItemBrowser()',1);
+		return;
+	}
+}
+
+function openItemBrowser() {
+   var param = {aras:window.top.aras,itemtypeName:ActiveType};
+   var res = showModalDialog(top.aras.getScriptsURL()+'searchDialog.html', param, 'dialogHeight:450px; dialogWidth:700px; status:0; help:0; resizable:1');
+	if (res == undefined) return;
+	var qry = innovator.newItem();
+	qry.loadAML("<Item type='" + ActiveType + "' select='item_number,name' action='get' id='" + res.itemID + "'></Item>");
+	qry = qry.apply();
+	var Items = qry.getItemsByXPath("//Item[@type='" + ActiveType + "']");
+	if (Items.getItemCount() > 0) {
+		var Item = Items.getItemByIndex(0);
+		loadItem(Item);
+	}
+}
+
+function loadItem(Item) {
+	updateActiveType();
+	//  update the Active Box at the top
+	active_slot.innerHTML="Active " + ActiveType + ":<b>&nbsp;" + Item.getProperty("item_number") + " - " + Item.getProperty("name"," ") + "</b>";
+	if (ActiveType=="Part") {
+		currPart=Item.getID();
+		currDoc = "";
+	} else {
+		currDoc =Item.getID();
+		currPart= "";
+	}
+	currName = Item.getProperty("name"," ");
+	currNumber=Item.getProperty("item_number"," ");
+
+	// test the Tab state and call the right routine to populate the Left Tree Grid
+	switch (currTabID) {
+		case "wu":
+			loadTreeWU(Item.getID(),Item.getType(),Item.getProperty("item_number"," "),Item.getProperty("name"," ") ," ")
+			break;
+		case "bom":
+			loadTreeBOM(Item.getID(),Item.getType(),Item.getProperty("item_number"," "),Item.getProperty("name"," ") ," ")
+			break;
+		case "hierarchywu":
+			loadTreeMultiWU(Item.getID(),Item.getType(),Item.getProperty("item_number"," "),Item.getProperty("name"," ") ," ")
+			break;
+		default:
+	}
+	affectedTree.deselect();
+	requiredTree.deselect();
+	notTree.deselect();
+}
+
+function clearGrid(which) {
+	which.turnEditOff();
+	var ids = which.getAllItemIds("|");
+  	var id_array = ids.split("|");
+  	for (var x = 0 ; x < id_array.length ; x++) {
+		rowid = id_array[x];
+		which.deleteRow(rowid);
+	}
+}
+// ============================================================================
+function setArrowContext(r,c) {
+	var action = tree.cells(r,2).getValue();
+
+   var rowIds = tree.getSelectedItemIds(';').split(';');
+	if ((action=="" || rowIds.length > 1) && locked) {  // if many are selected,  don't try to give buttons smart context
+		userAddToAffected.disabled 	= false;
+		userAddToNotAffected.disabled = false;
+		userAddToRequired.disabled 	= false;
+		return;
+	}
+
+	if (action =="Affected" && locked) {
+		userAddToAffected.disabled 	= true;
+		userAddToNotAffected.disabled = false;
+		userAddToRequired.disabled 	= false;
+		return;
+	}
+	if (action =="Needs Review" && locked) {
+		userAddToAffected.disabled 	= false;
+		userAddToNotAffected.disabled = false;
+		userAddToRequired.disabled 	= true;
+		return;
+	}
+	if (action =="Not Affected" && locked) {
+		userAddToAffected.disabled 	= false;
+		userAddToNotAffected.disabled = true;
+		userAddToRequired.disabled 	= false;
+		return;
+	}
+	userAddToAffected.disabled 	= true;
+	userAddToNotAffected.disabled = true;
+	userAddToRequired.disabled 	= true;
+
+}
+
+function addToTheRight(whichTreeName) {
+	var rowId = tree.getSelectedId();
+	var whichTree = document.applets[whichTreeName];
+   var NewAffected="";
+   var rowId, rowIds = tree.getSelectedItemIds(';').split(';');
+	if (rowIds.length == 0) return;
+	for (var i = 0; i < rowIds.length; i++) {
+		rowId = rowIds[i];
+		var itemId     = tree.getUserData(rowId,"id");
+		var itemType   = tree.cells(rowId,1).getValue();
+		var itemNumber = tree.cells(rowId,0).getValue();
+		var itemName   = tree.cells(rowId,3).getValue();
+
+		// decide if the Item already exists in the target tree,  if yes,  NOOP
+		if ( !whichTree.isItemExists(itemId) ) {
+			// now we are sure the item is being moved to another tree than the one it is already in (if any)
+			// copy the item over,  and then call the function to update the Actions in the left tree.
+			if (whichTreeName == "affectedTree") {
+				if (NewAffected=="")
+					NewAffected=itemId+";" +itemType;
+				else
+					NewAffected+= "|" + itemId+";" +itemType ;
+				affectedTree.addRow(itemId,itemType + "|"+ "Change" + "|"+ itemNumber + "|"+ itemName,itemId);
+				requiredTree.deleteRow(itemId);
+				notTree.deleteRow(itemId);
+			}
+			if (whichTreeName == "requiredTree") {
+				requiredTree.addRow(itemId,itemType + "|"+ itemNumber + "|"+ itemName,itemId);
+				affectedTree.deleteRow(itemId);
+				notTree.deleteRow(itemId);
+			}
+			if (whichTreeName == "notTree") {
+				notTree.addRow(itemId,itemType + "|"+ itemNumber + "|"+ itemName,itemId);
+				requiredTree.deleteRow(itemId);
+				affectedTree.deleteRow(itemId);
+			}
+		}
+	}
+	UpdateTreeActions();
+
+	// run rule #1
+	if (NewAffected != "") {
+		//alert('Running Rule#1 against: ' + NewAffected);
+		runRule1(NewAffected);
+	}
+}
+
+function runRule1(idList) {   //  any new item added to the Affected table,  run a one-level where-used and add the immediate parents to needs review
+	if (idList=="") return;
+	var statusId = top.aras.showStatusMessage('   Running Rule 1 ...', '../../images/Animated/ProgressSmall.gif');
+
+	var action, actions = idList.split('|')
+	if (actions.length == 0) return
+	for (var i = 0; i < actions.length; i++) {  //  -1 because there is a trailing |
+		action = actions[i];
+		var itemData = action.split(';')
+		if (itemData.length < 2) {
+			alert('Rule 1 idList error: ' + idList);
+			top.aras.clearStatusMessage (statusId);
+			return;
+		}
+	   var itemId = itemData[0];
+	   var itemType = itemData[1];
+
+		var qry = innovator.newItem();
+		if (itemType=='Part')
+			qry.loadAML("<Item type='Part' select='item_number,name' action='get'><is_current>1</is_current><Relationships><Item type='Part BOM' action='get' select='related_id'><related_id>" + itemId + "</related_id></Item></Relationships></Item>");
+		else
+			qry.loadAML("<Item type='Part' select='item_number,name' action='get'><is_current>1</is_current><Relationships><Item type='Part Document' action='get' select='related_id'><related_id>" + itemId + "</related_id></Item></Relationships></Item>");
+		qry = qry.apply();
+		var Items = qry.getItemsByXPath("//Result/Item[@type='Part']");
+		for (var j=0; j < Items.getItemCount(); j++) {
+			var Item = Items.getItemByIndex(j);
+			var type	 	= 'Part';
+			var id	 	= Item.getID();
+			var number  = Item.getProperty("item_number");
+			var name    = Item.getProperty("name");
+			// RULE   add this parent Part to the Review Required List
+			//  if it's not already on the review required list
+			//  if it is not already on the affected list
+			//  if it's not already on the notAffected List  (ASK GAVLAK ABOUT THIS ONE);
+			if (!affectedTree.isItemExists(id) && !requiredTree.isItemExists(id) && !notTree.isItemExists(id))
+		 			requiredTree.addRow(id,type + "|"+ number + "|"+ name,id);
+		}
+	}
+	UpdateTreeActions();
+	top.aras.clearStatusMessage (statusId);
+}
+
+function loadTreeMultiWU(id,type,item_number, name) {
+	var statusId = top.aras.showStatusMessage('   Loading ...', '../../images/Animated/ProgressSmall.gif');
+	uniqueGridId=0;
+	clearGrid(tree);
+
+	var MyId;
+	var qry = innovator.applyMethod("CMII-Fetch-WU", "<Item type='" + type + "' id='" + id + "'><item_number>" + item_number + "</item_number><name>" + name + "</name></Item>");
+   if (qry.isError()) {
+		alert(qry.getErrorDetail() );
+		return;
+	}
+   var Items = qry.getItemsByXPath("//Result/Item");
+  	for (var i=0; i < Items.getItemCount(); i++) {
+	   var Item = Items.getItemByIndex(i);
+		var MyId = Item.getID() + uniqueGridId++;
+	   tree.insertRoot(MyId, Item.getAttribute("item_number"," ")+ "|" + Item.getType() + "| " + "|" + Item.getAttribute("name"," "),MyId );
+	   tree.setUserData(MyId,"id",Item.getID());
+		tree.openItem(MyId);
+		loadTreeMultiWUrecursion(MyId,Item);
+	 }
+	UpdateTreeActions();
+	top.aras.clearStatusMessage (statusId);
+}
+
+function loadTreeMultiWUrecursion(ParentId, ParentItem) {
+   var Items = ParentItem.getItemsByXPath("Item");
+  	for (var i=0; i < Items.getItemCount(); i++) {
+	   var Item = Items.getItemByIndex(i);
+		var MyId = Item.getID() + uniqueGridId++;
+
+	   tree.insertNewChild(ParentId,MyId, Item.getAttribute("item_number"," ") +"|"+ Item.getType() +"| " + "|"+ Item.getAttribute("name"," ") ,MyId);
+   	tree.setUserData(MyId,"id",Item.getID());
+
+		loadTreeMultiWUrecursion(MyId,Item);
+	 }
+}
+
+
+function loadTreeBOM(id,type,item_number, name) {
+	uniqueGridId=0;
+	clearGrid(tree);
+   if (type=='Document') return;
+	var statusId = top.aras.showStatusMessage('   Loading ...', '../../images/Animated/ProgressSmall.gif');
+	var MyPid = id + uniqueGridId++;
+	tree.insertRoot(MyPid, item_number +"|"+ type +"| "  + "|"+ name,MyPid);
+	tree.setUserData(MyPid,"id",id);
+	var qry = innovator.newItem();
+	qry.loadAML("<Item type='Part' action='get' id='" + id + "' select='id'><Relationships><Item type='Part BOM' select='id,related_id(item_number,name)'></Item><Item type='Part Document' select='id,related_id(item_number,name)'></Item></Relationships></Item>");
+   qry = qry.apply();
+   var Items = qry.getItemsByXPath("//Item[@type='Part BOM']");  	for (var i=0; i < Items.getItemCount(); i++) {
+	   var BomItem = Items.getItemByIndex(i);
+		var PartItem= BomItem.getPropertyItem("related_id");
+
+		var MyCid = PartItem.getID() + uniqueGridId++;
+		tree.insertNewChild(MyPid,MyCid, PartItem.getProperty("item_number") +"|"+ "Part" +"| " + "|"+ PartItem.getProperty("name"),MyCid);
+		tree.setUserData(MyCid,"id",PartItem.getID());
+	}
+   var Items = qry.getItemsByXPath("//Item[@type='Part Document']");
+  	for (var i=0; i < Items.getItemCount(); i++) {
+	   var BomItem = Items.getItemByIndex(i);
+		var DocItem=  BomItem.getPropertyItem("related_id");
+
+		var MyCid = DocItem.getID() + uniqueGridId++;
+		tree.insertNewChild(MyPid,MyCid, DocItem.getProperty("item_number") +"|"+ "Document" +"|" + " " + "|"+ DocItem.getProperty("name"),MyCid);
+		tree.setUserData(MyCid,"id",DocItem.getID());
+	}
+	UpdateTreeActions();
+  	tree.openItem(MyPid);
+	top.aras.clearStatusMessage (statusId);
+}
+
+function loadTreeWU(id,type,item_number, name) {
+	uniqueGridId=0;
+	clearGrid(tree);
+	var statusId = top.aras.showStatusMessage('   Loading ...', '../../images/Animated/ProgressSmall.gif');
+
+	var qry = innovator.newItem();
+	if (type=='Part')
+		qry.loadAML("<Item type='Part' select='item_number,name' action='get'><is_current>1</is_current><Relationships><Item type='Part BOM' action='get' select='related_id'><related_id>" + id + "</related_id></Item></Relationships></Item>");
+	else
+		qry.loadAML("<Item type='Part' select='item_number,name' action='get'><is_current>1</is_current><Relationships><Item type='Part Document' action='get' select='related_id'><related_id>" + id + "</related_id></Item></Relationships></Item>");
+   qry = qry.apply();
+   var Items = qry.getItemsByXPath("//Result/Item[@type='Part']");
+  	for (var i=0; i < Items.getItemCount(); i++) {
+	   var Item = Items.getItemByIndex(i);
+
+	   var MyPid = Item.getID() + uniqueGridId++;
+	   tree.insertRoot(MyPid, Item.getProperty("item_number"," ")+ "|" + "Part" + "| " + "|" + Item.getProperty("name"," "),MyPid );
+	   tree.setUserData(MyPid,"id",Item.getID());
+
+	   var myRid = id + uniqueGridId++;
+	   tree.insertNewChild(MyPid,myRid, item_number +"|"+ type +"| " + "|"+ name ,myRid);
+   	tree.setUserData(myRid,"id",id);
+   	tree.openItem(MyPid);
+	}
+	if (Items.getItemCount() ==0 ) {
+	   var MyPid =id + uniqueGridId++;
+	   tree.insertRoot(MyPid, item_number+ "|" + type + "| " + "|" + name,MyPid );
+	   tree.setUserData(MyPid,"id",id);
+	}
+	UpdateTreeActions();
+	top.aras.clearStatusMessage (statusId);
+}
+
+function UpdateTreeActions() {
+	// clear all selections to clean up
+	onRowSelect();
+
+	// loop thru the tree that is displayed and check for already dispositioned Items
+   var rowid="";
+   var itemId="";
+	var ids =tree.getAllItemIds("|");
+  	var id_array = ids.split("|");
+	for (var x = 0 ; x < id_array.length ; x++) {
+		rowid = id_array[x];
+		itemId = tree.getUserData(rowid,"id");
+		if (affectedTree.isItemExists(itemId))  {
+			tree.cells(rowid,2).setValue("Affected");
+		} else {
+			if (notTree.isItemExists(itemId)) {
+				tree.cells(rowid,2).setValue("Not Affected");
+			} else {
+				if (requiredTree.isItemExists(itemId))
+					tree.cells(rowid,2).setValue("Needs Review");
+			}
+		}
+	}
+}
+
+
+function onRowSelect() {
+	requiredTree.deselect();
+	notTree.deselect();
+	affectedTree.deselect();
+	tree.deselect();
+}
+
+
+function onAffectedClick() {
+	onClick(affectedTree,affectedTree.cells(affectedTree.getSelectedId(),2).getValue(),affectedTree.cells(affectedTree.getSelectedId(),3).getValue());
+}
+function onRequiredClick() {
+	onClick(requiredTree,requiredTree.cells(requiredTree.getSelectedId(),1).getValue(),requiredTree.cells(requiredTree.getSelectedId(),2).getValue());
+}
+function onNotClick() {
+	onClick(notTree,notTree.cells(notTree.getSelectedId(),1).getValue(),notTree.cells(notTree.getSelectedId(),2).getValue());
+}
+
+function onClick(whichTree,whichItemNumber,whichName) {
+	updateActiveType();
+	var r = whichTree.getSelectedId();
+	ActiveType = whichTree.cells(r,0).getValue();
+	if (ActiveType=='Part') {
+		currPart = r;
+		currDoc = "";
+	} else {
+		currPart = "";
+		currDoc = r;
+	}
+   currName=whichName;
+   currNumber = whichItemNumber;
+	active_slot.innerHTML="Active " + ActiveType + ":<b>&nbsp;" + currNumber + " - " + currName + "</b>";
+	// test the Tab state and call the right routine to populate the Left Tree Grid
+	switch (currTabID) {
+		case "wu":
+			loadTreeWU(r,ActiveType,whichItemNumber,whichName)
+			break;
+		case "bom":
+			loadTreeBOM(r,ActiveType,whichItemNumber,whichName)
+			break;
+		case "hierarchywu":
+			loadTreeMultiWU(r,ActiveType,whichItemNumber,whichName)
+			break;
+		default:
+	}
+}
+function onTreeDoubleClick() {
+	updateActiveType();
+	whichTree = tree;
+	var r = whichTree.getSelectedId();
+	ActiveType      = whichTree.cells(r,1).getValue();
+	whichItemNumber = whichTree.cells(r,0).getValue();
+	whichName       = whichTree.cells(r,3).getValue();
+	// note r is the id of the row in order to retrieve the cell contents
+	// now re-assign r to be the real item ID
+	r = whichTree.getUserData(r,"id");
+	if (ActiveType=='Part') {
+		currPart = r;
+		currDoc = "";
+	} else {
+		currPart = "";
+		currDoc = r;
+	}
+   currName=whichName;
+   currNumber = whichItemNumber;
+	active_slot.innerHTML="Active " + ActiveType + ":<b>&nbsp;" + currNumber + " - " + currName + "</b>";
+	// test the Tab state and call the right routine to populate the Left Tree Grid
+	switch (currTabID) {
+		case "wu":
+			loadTreeWU(r,ActiveType,whichItemNumber,whichName)
+			break;
+		case "bom":
+			loadTreeBOM(r,ActiveType,whichItemNumber,whichName)
+			break;
+		case "hierarchywu":
+			loadTreeMultiWU(r,ActiveType,whichItemNumber,whichName)
+			break;
+		default:
+	}
+}
+function OnAffectedEditCell(event,row,col)  {
+	if (event==1) 	return;  // this is ongoing typing event - ignore it
+
+	if (event==0) { //  this is START of edit event
+	   if (!locked) return false;
+		if (col==1)  { //  Pull down List
+			affectedTree.setComboList('', 1);
+      	affectedTree.setColumnProperties('type=COMBO,list=1', col);
+			affectedTree.cells(row,col).setCombo(ChangeTypes,ChangeTypes);
+			return true;
+		}
+		return false;
+	}
+	if (event==2) {    //  end of editing -   save the changes
+	}
+}
+
+
+function updateActiveType() {
+	var  el    = toolbar.getActiveToolbar().getElement('type');
+	ActiveType = el.getItem(el.getSelectedIndex() );
+}
+
+function openItem(itemType,itemId) {
+	var itm=top.aras.getItemById(itemType,itemId ,0);
+	top.aras.uiShowItemEx(itm,undefined,true);
+}
+function onMenuInit(whichTree) {
+	whichTree.menuRemoveAll();
+	whichTree.menuAdd("Open Item");
+}
+function onMenu(item,r,c) {
+	openItem(tree.cells(r,1).getValue(), tree.getUserData(r,"id") );
+}
+function onMenuAffected(id,r,c) {
+	openItem(affectedTree.cells(r,0).getValue(),r);
+}
+function onMenuRequired(id,r,c) {
+	openItem(requiredTree.cells(r,0).getValue(),r);
+}
+function onMenuNot(id,r,c) {
+	openItem(notTree.cells(r,0).getValue(),r);
+}
+
+// ============================= control callbacks =============================
+</script>
+
+<script language="jscript" for="tree" event="GridStart(isSuccess)">
+	// ----  MAIN TREE -----------------------------------------------------
+	tree.Delimeter = "|";
+	tree.DrawGrid = true;
+	tree.HeaderBGColor = "#d4d0c8";
+	tree.SelBGColor = "#FFFF00";
+	tree.ColumnDraggable = "0";
+	tree.noSort = "1";
+	tree.ExpandRoot = "1";
+	tree.MultiSelect = "1";
+	tree.treeLines = "1";
+   tree.setColumnCount(4);
+	tree.setInitWidths("173|67|90|150");
+	tree.setHorAligns("LEFT|LEFT|CENTER|LEFT");
+   tree.SetHeaderCol(0,"Hierarchy");
+   tree.SetHeaderCol(1,"Type");
+   tree.SetHeaderCol(2,"Action");
+   tree.SetHeaderCol(3,"Description");
+   tree.Editable = true;
+   tree.SetColumnProperties("type=noedit",0);
+   tree.SetColumnProperties("type=noedit",2);
+   tree.SetColumnProperties("type=noedit",3);
+</script>
+<script language="jscript" for="tree" event="GridClick(rowId, col)">
+  setArrowContext(rowId, col);
+</script>
+<script language="jscript" for="tree" event="GridDoubleClick(rowId)">
+  onTreeDoubleClick(rowId);
+</script>
+<script language="jscript" for="tree" event="GridMenuInit(rowId, col, p)">
+  onMenuInit(tree);
+</script>
+<script language="jscript" for="tree" event="GridMenuClick(m, rowId, col)">
+  onMenu(m, rowId, col);
+</script>
+<script language="jscript" for="tree" event="GridEditCell(mode, rowID, col)">
+    return false;
+</script>
+
+<script language="jscript" for="affectedTree" event="GridStart(isSuccess)">
+	// ----  AFFECTED TREE -----------------------------------------------------
+	affectedTree.Delimeter = "|";
+	affectedTree.DrawGrid = true;
+	affectedTree.HeaderBGColor = "#d4d0c8";
+	affectedTree.SelBGColor = "#FFFF00";
+	affectedTree.ColumnDraggable = false;
+	affectedTree.noSort = true;
+	affectedTree.treeLines = "1";
+   affectedTree.setColumnCount(4);
+	affectedTree.setInitWidths("60|45|60|135");
+	affectedTree.setHorAligns("LEFT|LEFT|LEFT|LEFT");
+   affectedTree.SetHeaderCol(0,"Type");
+   affectedTree.SetHeaderCol(1,"Action");
+   affectedTree.SetHeaderCol(2,"Identifier");
+   affectedTree.SetHeaderCol(3,"Description");
+   affectedTree.Editable = true;
+   affectedTree.SetColumnProperties("type=noedit",0);
+   affectedTree.SetColumnProperties("type=noedit",2);
+   affectedTree.SetColumnProperties("type=noedit",3);
+
+</script>
+<script language="jscript" for="affectedTree" event="GridClick(rowId, col)">
+  onAffectedClick(rowId, col);
+  affectedTree.setSelectedRow(rowId, false, false);
+  return true;
+</script>
+<script language="jscript" for="affectedTree" event="GridDoubleClick(rowId)">
+</script>
+<script language="jscript" for="affectedTree" event="GridMenuInit(rowId, col, p)">
+  onMenuInit(affectedTree);
+</script>
+<script language="jscript" for="affectedTree" event="GridMenuClick(m, rowId, col)">
+  onMenuAffected(m, rowId, col);
+</script>
+<script language="jscript" for="affectedTree" event="GridEditCell(mode, rowID, col)">
+  var res = OnAffectedEditCell(mode, rowID, col);
+  return res;
+</script>
+
+<script language="jscript" for="requiredTree" event="GridStart(isSuccess)">
+	// ----  REQUIRED TREE -----------------------------------------------------
+	requiredTree.Delimeter = "|";
+	requiredTree.DrawGrid = true;
+	requiredTree.HeaderBGColor = "#d4d0c8";
+	requiredTree.SelBGColor = "#FFFF00";
+	requiredTree.ColumnDraggable = false;
+	requiredTree.noSort = true;
+	requiredTree.treeLines = "1";
+   requiredTree.setColumnCount(3);
+	requiredTree.setInitWidths("60|60|180");
+	requiredTree.setHorAligns("LEFT|LEFT|LEFT");
+   requiredTree.SetHeaderCol(0,"Type");
+   requiredTree.SetHeaderCol(1,"Identifier");
+   requiredTree.SetHeaderCol(2,"Description");
+   requiredTree.Editable = true;
+   requiredTree.SetColumnProperties("type=noedit",0);
+   requiredTree.SetColumnProperties("type=noedit",1);
+   requiredTree.SetColumnProperties("type=noedit",2);
+
+</script>
+<script language="jscript" for="requiredTree" event="GridClick(rowId, col)">
+  onRequiredClick(rowId, col);
+</script>
+<script language="jscript" for="requiredTree" event="GridDoubleClick(rowId)">
+</script>
+<script language="jscript" for="requiredTree" event="GridMenuInit(rowId, col, p)">
+  onMenuInit(requiredTree);
+</script>
+<script language="jscript" for="requiredTree" event="GridMenuClick(m, rowId, col)">
+  onMenuRequired(m, rowId, col);
+</script>
+<script language="jscript" for="requiredTree" event="GridEditCell(mode, rowID, col)">
+
+</script>
+
+<script language="jscript" for="notTree" event="GridStart(isSuccess)">
+	// ----  NOT TREE -----------------------------------------------------
+	notTree.Delimeter = "|";
+	notTree.DrawGrid = true;
+	notTree.HeaderBGColor = "#d4d0c8";
+	notTree.SelBGColor = "#FFFF00";
+	notTree.ColumnDraggable = false;
+	notTree.noSort = true;
+	notTree.treeLines = "1";
+   notTree.setColumnCount(3);
+	notTree.setInitWidths("60|60|180");
+	notTree.setHorAligns("LEFT|LEFT|LEFT");
+   notTree.SetHeaderCol(0,"Type");
+   notTree.SetHeaderCol(1,"Identifier");
+   notTree.SetHeaderCol(2,"Description");
+   notTree.Editable = true;
+   notTree.SetColumnProperties("type=noedit",0);
+   notTree.SetColumnProperties("type=noedit",1);
+   notTree.SetColumnProperties("type=noedit",2);
+
+   affectedOnLoad();
+</script>
+<script language="jscript" for="notTree" event="GridClick(rowId, col)">
+  onNotClick(rowId, col);
+</script>
+<script language="jscript" for="notTree" event="GridDoubleClick(rowId)">
+</script>
+<script language="jscript" for="notTree" event="GridMenuInit(rowId, col, p)">
+  onMenuInit(notTree);
+</script>
+<script language="jscript" for="notTree" event="GridMenuClick(m, rowId, col)">
+  onMenuNot(m, rowId, col);
+</script>
+<script language="jscript" for="notTree" event="GridEditCell(mode, rowID, col)">
+</script>
+
+<script for="tabbar" event="OnStart()">
+  tabbar.addTab('bom', 'Structure');
+  tabbar.addTab('wu', 'Direct Where-Used');
+  tabbar.addTab('hierarchywu', 'Summary Compressed Where-Used');
+  currTabID='wu';
+  tabbar.selectTab(currTabID)
+</script>
+<script for="tabbar" event="OnClick(TabId)">
+   if (currTabID==TabId) return true;
+	currTabID = TabId;
+	var id="";
+	if (currPart=="" && currDoc=="") return;
+
+	if (currPart !="" ) {
+		id = currPart;
+		ActiveType='Part';
+	} else {
+		id=currDoc;
+		ActiveType='Document';
+	}
+	if (currTabID == "wu")
+	{
+		loadTreeWU(id,ActiveType,currNumber,currName)
+	}
+	if (currTabID == "bom")
+	{
+		loadTreeBOM(id,ActiveType,currNumber,currName)
+	}
+	if (currTabID == "hierarchywu")
+	{
+		loadTreeMultiWU(id,ActiveType,currNumber,currName)
+	}
+</script>
+
+<script language="jscript" for="toolbar" event="Onload()">
+  toolbar.setImageBase("../cbin/");
+  toolbar.loadXML("../solutions/CMIIAffectedItemsWizard/CMII_AnalysisDialogToolbar.xml");
+  toolbar.show();
+  //toolbar.showLabels(true);
+
+  active_slot.innerHTML="Active Item:";
+</script>
+<script language="jscript" for="toolbar" event="Onclick(tbItem)">
+  onToolbarClick(tbItem);
+</script>
+
+
+<body topmargin="0" leftmargin="7" bgcolor= "#d4d0c8" rightmargin="1" bottommargin="0" style="background-color:#d4d0c8;">
+<table border="0" cellpadding="0" cellspacing="0" width="100%">
+	<tr valign="top" height="28" width = "100%" bgColor="buttonface"  >
+  <td>
+ <button type="button" onclick="JavaScript: onTbItemClick(this)" id="ready_btn" name="ready_btn"  TABINDEX="1">
+  <img src="../images/icons/20x20/20x20_checkmark.gif" border='0' TITLE = "Return Selected">
+ </button>
+ <script>var ready_btn = this.document.all.ready_btn;</script>
+ <button type="button" onclick="JavaScript: onTbItemClick(this)" id="set_nothing" name="set_nothing" TABINDEX="2">
+  <img src="../images/icons/16x16/16x16_redx.gif" border='0' TITLE = "Clear Selection">
+ </button>
+ <script>var set_nothingButton = this.document.all.set_nothing;</script>
+ <button type="button" height="10" onclick="JavaScript: onTbItemClick(this)" id="exit" name="exit" TABINDEX="3">
+   <img src="../images/icons/20x20/20x20_exit_door.gif" border='0' TITLE = "Exit">
+ </button>
+ <script>var exitButton = this.document.all.exit;</script>
+</td>
+</tr>
+<tr height="28px">
+	<td align="left"   width="40%" id="active_slot" ></td>
+	<td align="right"  width="55%"  id="toolbar_slot" >
+  		<comment id="tb_commented">
+			<object id="toolbar"
+			  style="width:100%;height:26px"
+			  classid="../cbin/Toolbar.dll#Aras.Client.Controls.Toolbar" >
+			</object>
+		</comment>
+		<script>
+		WriteUncommentedObject("tb_commented");
+		</script>
+	</td>
+</tr>
+<tr>
+	<td colspan="2">
+	<table width="100%" height="100%"  border="0" cellpadding="0" cellspacing="0">
+	<tr>
+		<td>
+	   <table border="0" bgcolor= "#d4d0c8" cellpadding="0" cellspacing="0" >
+	   <tr height="27px">
+			<td align="left" width="480px">
+				<comment id="tabbar_commented">
+				<object id="tabbar"
+				  classId="../cbin/SimpleTabbar.dll#Aras.Client.Controls.SimpleTabbar"
+				  style="width:100%; height:26px;">
+				</object>
+				</comment>
+				<script>
+				WriteUncommentedObject("tabbar_commented");
+				</script>
+		   </td>
+
+	   </tr>
+	   <tr>
+	   	<td>
+  			<comment id="tree_commented">
+				 <object id="tree" width="480px" height="490px"
+					class="loadedApplet"
+					classid="../cbin/TreeTable.dll#Aras.Client.Controls.TreeGridContainer" VIEWASTEXT>
+				 </object>
+			</comment>
+			<script>
+			WriteUncommentedObject("tree_commented");
+			</script>
+			</td>
+		</tr>
+		</table>
+		</td>
+		<td>
+		<table  border="0" cellpadding="0" cellspacing="3">
+		<tr>
+			<td>
+			<INPUT type="button" value=">>>" size="4" name="userAddToAffected" disabled="true" onclick="addToTheRight('affectedTree');">
+			</td>
+			<td>
+			<font size="3">Affected Items</font>
+  			<comment id="affectedTree_commented">
+				 <object id="affectedTree" width="300px" height="160px"
+					class="loadedApplet"
+					classid="../cbin/TreeTable.dll#Aras.Client.Controls.GridContainer" VIEWASTEXT>
+				 </object>
+			</comment>
+			<script>
+			WriteUncommentedObject("affectedTree_commented");
+			</script>
+			</td>
+		</tr>
+		<tr>
+			<td>
+			<INPUT type="button" value=">>>" name="userAddToRequired" disabled="true"  onclick="addToTheRight('requiredTree');">
+			</td>
+			<td>
+			<font size="3">Needs Review</font>
+  			<comment id="requiredTree_commented">
+				 <object id="requiredTree" width="300px" height="160px"
+					class="loadedApplet"
+					classid="../cbin/TreeTable.dll#Aras.Client.Controls.GridContainer" VIEWASTEXT>
+				 </object>
+			</comment>
+			<script>
+			WriteUncommentedObject("requiredTree_commented");
+			</script>
+			</td>
+		</tr>
+		<tr>
+			<td>
+			<INPUT type="button" value=">>>" name="userAddToNotAffected" disabled="true" onclick="addToTheRight('notTree');">
+			</TD>
+			<td>
+			<font size="3">Not Affected</font>
+  			<comment id="notTree_commented">
+				 <object id="notTree" width="300px" height="160px"
+					class="loadedApplet"
+					classid="../cbin/TreeTable.dll#Aras.Client.Controls.GridContainer" VIEWASTEXT>
+				 </object>
+			</comment>
+			<script>
+			WriteUncommentedObject("notTree_commented");
+			</script>
+			</td>
+		</tr>
+		</table>
+		</td>
+	</tr>
+	</table>
+	</td>
+</tr>
+</table>
+</body>
+</html>

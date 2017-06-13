@@ -1,0 +1,20 @@
+<AML>
+ <Item type="List" id="A3ECFF078DE943DBBFE51A9A4D5CBB95" action="add">
+  <description>Affected item actions</description>
+  <name>Affected Item Wizard Actions</name>
+  <Relationships>
+   <Item type="Value" id="FDCB07C3A2874374BE34043C77E1A980" action="add">
+    <label>Needs Review</label>
+    <sort_order>1</sort_order>
+    <source_id keyed_name="Affected Item Wizard Actions" type="List">A3ECFF078DE943DBBFE51A9A4D5CBB95</source_id>
+    <value>Needs Review</value>
+   </Item>
+   <Item type="Value" id="42A63536C9584D4AA64BDA0C55710EEE" action="add">
+    <label>Not Affected</label>
+    <sort_order>2</sort_order>
+    <source_id keyed_name="Affected Item Wizard Actions" type="List">A3ECFF078DE943DBBFE51A9A4D5CBB95</source_id>
+    <value>Not Affected</value>
+   </Item>
+  </Relationships>
+ </Item>
+</AML>
