@@ -1,7 +1,9 @@
 ﻿<AML>
  <Item type="Item Action" id="66F1A8B3C941481A80DDC88771EBB8B8" action="add">
+  <classification>/*</classification>
   <related_id keyed_name="CMII Wizard" type="Action">
    <Item type="Action" id="E8CA0CECF81F4FE8B8842EC34AD1A2A7" action="add">
+    <classification>/*</classification>
     <item_query>___is_new___</item_query>
     <location>client</location>
     <method keyed_name="CMII Wizard" type="Method">

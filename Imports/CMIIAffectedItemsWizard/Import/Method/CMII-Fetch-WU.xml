@@ -1,5 +1,6 @@
 ﻿<AML>
  <Item type="Method" id="5E437890A18A49B48069AC0E0D78CA32" action="add">
+  <classification>/*</classification>
   <comments>CMII fetches an inverted structure for the Wizard</comments>
   <method_code><![CDATA['   WU explosion -   then walk back down returning the sparse BOM of the TOP Items.
 '  input is  <Item type="Material"  id="xxx"><materialno>xxx</materialno><description>xxx</description></Item>

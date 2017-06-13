@@ -1,4 +1,12 @@
-This is V7 of the CMII Affected Items Wizard.
+## V8 of the CMII Affected Items Wizard
+
+Changes:
+
+- Added Link to the new ECO itemType
+
+- Tested for v9.1
+
+## V7 of the CMII Affected Items Wizard
 
 Changes:
 
@@ -9,5 +17,8 @@ Changes:
 
 - Tested for v9.0.2
 
+## V6 of the CMII Affected Items Wizard
+
 - The Package name was changed with v6. This will only impact you if you already have a previous version (earlier than 6) already loaded. 
-    - Before you can successfully import this new version, you must either rename the package (Administration-->Packages) to CMIIAffectedItemsWizard (removing the com.aras), or Delete the Package item.
+
+- Before you can successfully import this new version, you must either rename the package (Administration-->Packages) to CMIIAffectedItemsWizard (removing the com.aras), or Delete the Package item.

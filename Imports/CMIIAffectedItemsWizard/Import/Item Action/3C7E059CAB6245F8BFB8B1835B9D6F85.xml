@@ -1,5 +1,5 @@
 ﻿<AML>
- <Item type="Item Action" id="69EF13212020470AA382ADD05B637240" action="add">
+ <Item type="Item Action" id="3C7E059CAB6245F8BFB8B1835B9D6F85" action="add">
   <classification>/*</classification>
   <related_id keyed_name="CMII Wizard" type="Action">
    <Item type="Action" id="E8CA0CECF81F4FE8B8842EC34AD1A2A7" action="add">
@@ -17,6 +17,6 @@
    </Item>
   </related_id>
   <sort_order>128</sort_order>
-  <source_id keyed_name="ECN Affected Item" type="ItemType" name="ECN Affected Item">7EA6D421B61A4BEB9F54DF7D1A51B78C</source_id>
+  <source_id keyed_name="Simple ECO Affected Item" type="ItemType" name="Simple ECO Affected Item">FAE5DF5AFEC0437C9ADC9E38184EA8D6</source_id>
  </Item>
 </AML>

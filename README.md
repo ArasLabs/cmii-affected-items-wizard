@@ -10,6 +10,7 @@ This project and the following release notes have been migrated from the old Ara
 
 Release | Notes
 --------|--------
+[v8](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v8) | 04.08.2009 Updated for Version 9.1, and integrated to the new Simple ECO itemType
 [v7](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v7) | 01.21.2009 (peter) updated and tested on v9.0.2 of Innovator. 3 package changes: (1) Removed the error message about missing ItemType when there are un-saved Affected items when the Wizard is opened (2) List of change controlled itemtypes is now dynamic. For example, if a new itemType named Tool is created with a Relationship "Part Tool" then the wizard will adapt to this new itemType. This removes the hardcoding of Part and Document as the only controlled items. (3) CMII Wizard is now also connected to the ECN.
 [v6](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v6) | 06/27/2008 (Peter) updated the package for Innovator 8.2.0 and 9.0.1 Also made the Lookup function work with filtered values. WARNING: ACTUNG: I have changed the name of the package to just CMIIAffectedItemsWizard, dropping the "com.aras.innovator.solution." prefix. You must rename the Package you already have loaded in Innovator, before you can merge the new versions changes in.
 [v4](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v4) | 09/27/2007 (Peter) this release was packaged after the CMII Conference in Washington. Now supports version 8.1.1 and has improved error handling. The entre solution is now a package (no external files).
@@ -19,6 +20,7 @@ Release | Notes
 
 Project | Aras
 --------|------
+[v8](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v8) | 9.1
 [v7](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v7) | 9.0.2
 [v6](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v6) | 8.2.0, 9.0.1
 [v4](https://github.com/ArasLabs/cmii-affected-items-wizard/releases/tag/v4) | 8.1.1

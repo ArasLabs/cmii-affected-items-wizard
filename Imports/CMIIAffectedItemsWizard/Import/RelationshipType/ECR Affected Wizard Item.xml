@@ -2,6 +2,7 @@
  <Item type="RelationshipType" id="6ADCEB86424C4EF18A18616BD515AF79" action="add" dependencyLevel="0">
   <auto_search>1</auto_search>
   <behavior>float</behavior>
+  <classification>/*</classification>
   <copy_permissions>0</copy_permissions>
   <create_related>0</create_related>
   <hide_in_all>1</hide_in_all>
@@ -11,14 +12,14 @@
   <label xml:lang="en">Wizard Internal</label>
   <name>ECR Affected Wizard Item</name>
   <new_show_related>0</new_show_related>
-  <related_id keyed_name="Affected Item" type="ItemType" name="ItemType">BFAAB0F6838D4F80BF12CB328FF5B097</related_id>
+  <related_id keyed_name="Affected Item" type="ItemType" name="Affected Item">BFAAB0F6838D4F80BF12CB328FF5B097</related_id>
   <related_notnull>0</related_notnull>
   <related_option>2</related_option>
   <relationship_id keyed_name="ECR Affected Wizard Item" type="ItemType" name="ECR Affected Wizard Item">
    <Item type="ItemType" id="20DA1961A6554E32830C5E7CCDBBB8E1" action="add">
     <allow_private_permission>1</allow_private_permission>
     <auto_search>0</auto_search>
-    <default_lifecycle keyed_name="Default" type="Life Cycle Map">2F3B75E17C4E4F2D9599579A965BFA64</default_lifecycle>
+    <enforce_discovery>1</enforce_discovery>
     <hide_where_used>0</hide_where_used>
     <implementation_type>table</implementation_type>
     <instance_data>ECR_AFFECTED_WIZARD_ITEM</instance_data>
@@ -30,12 +31,18 @@
     <manual_versioning>0</manual_versioning>
     <name>ECR Affected Wizard Item</name>
     <revisions keyed_name="Default" type="Revision">7FE395DD8B9F4E1090756A34B733D75E</revisions>
-    <save_history>0</save_history>
     <show_parameters_tab>1</show_parameters_tab>
     <unlock_on_logout>0</unlock_on_logout>
     <use_src_access>1</use_src_access>
     <Relationships>
+     <Item type="ItemType Life Cycle" id="F9A13DEEA4514A0B8DE938F15B308A5E" action="add">
+      <related_id keyed_name="Default" type="Life Cycle Map">2F3B75E17C4E4F2D9599579A965BFA64</related_id>
+      <sort_order>128</sort_order>
+      <source_id keyed_name="ECR Affected Wizard Item" type="ItemType" name="ECR Affected Wizard Item">20DA1961A6554E32830C5E7CCDBBB8E1</source_id>
+     </Item>
+    
      <Item type="Property" id="01D3AC93F0F4479F8628BC309F5A1F17" action="add">
+      <classification>/*</classification>
       <column_alignment>left</column_alignment>
       <data_source keyed_name="Affected Item Wizard Actions">A3ECFF078DE943DBBFE51A9A4D5CBB95</data_source>
       <data_type>list</data_type>
@@ -51,8 +58,10 @@
       <readonly>0</readonly>
       <sort_order>512</sort_order>
       <source_id keyed_name="ECR Affected Wizard Item" type="ItemType" name="ECR Affected Wizard Item">20DA1961A6554E32830C5E7CCDBBB8E1</source_id>
+      <track_history>0</track_history>
       <Relationships>
        <Item type="Grid Event" id="D139916826504B45A1843AF5B52483B8" action="add">
+        <classification>/*</classification>
         <grid_event>onsearchdialog</grid_event>
         <related_id keyed_name="CMII Wizard Dialog Filter" type="Method">
          <Item type="Method" action="get" select="id">
@@ -63,8 +72,7 @@
         <source_id keyed_name="action" type="Property">01D3AC93F0F4479F8628BC309F5A1F17</source_id>
        </Item>
       </Relationships>
-     </Item>
-    </Relationships>
+     </Item></Relationships>
    </Item>
   </relationship_id>
   <sort_order>512</sort_order>

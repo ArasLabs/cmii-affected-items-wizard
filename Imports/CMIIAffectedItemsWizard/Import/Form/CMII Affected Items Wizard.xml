@@ -1,18 +1,21 @@
 ﻿<AML>
  <Item type="Form" id="DE6BEC40660B499AB3E71AB7055B3243" action="add">
+  <classification>/*</classification>
   <description>CMII Affected Items Wizard Dialog</description>
   <height>640</height>
   <name>CMII Affected Items Wizard</name>
   <stylesheet><![CDATA[../styles/default.css]]></stylesheet>
-  <width>850</width>
+  <width>875</width>
   <Relationships>
    <Item type="Body" id="AF7837A4CE9848ECAD1B1FA282616A4B" action="add">
+    <classification>/*</classification>
     <sort_order>128</sort_order>
     <source_id keyed_name="CMII Affected Items Wizard" type="Form">DE6BEC40660B499AB3E71AB7055B3243</source_id>
     <Relationships>
      <Item type="Field" id="7E5FB7F4C887483E9C7834020C23F788" action="add">
       <bg_color>#FFFFFF</bg_color>
       <border_width>0</border_width>
+      <classification>/*</classification>
       <field_type>html</field_type>
       <font_color>#000000</font_color>
       <font_family>arial, helvetica, sans-serif</font_family>
@@ -50,9 +53,9 @@
 06.27.2008 peter  added better behaviors on the lookup.  tested for 8.2 and 9.0.1
 01.21.2009 peter  clean-up of No ItemType found error for unsaved Affected items
 						Tested for 9.0.2
-						Aadded automatic lookup of CHangeControlItems so Wizard is more dynamic
+						Added automatic lookup of ChangeControlItems so Wizard is more dynamic
 
-
+04.08.2009 peter  Changes for 9.1.  Add Simple-ECO itemtype,  and update UI.
 ==========================================================================================
 -->
 <html>
@@ -104,6 +107,11 @@ if (THIS.getAttribute("isTemp") == "1") locked=true;
 
 // 03/25/2008 -
 var ParentType = THIS.getType();
+// 04.08.2009
+var AffectedRelType = ParentType + " Affected Item";
+var AffectedWizardRelType = ParentType + " Affected Wizard Item";
+if (ParentType=='Simple ECO') AffectedWizardRelType = ParentType + " Affected Wiz Item"; // due to itemType name length limit
+
 // =====================================================================================
 
 function affectedOnLoad() {    //fires when the last grid "notTree" is loaded and starts.
@@ -112,7 +120,7 @@ function affectedOnLoad() {    //fires when the last grid "notTree" is loaded an
       alert('controls not ready');
       return;
    }
-   //  first 3 house keeping things...  fetch list of allowed CHange Control Types,  The List and Icon definitions
+   //  first 3 house keeping things...  fetch list of allowed Change Control Types,  The List and Icon definitions
 	var qry = THIS.newItem('Morphae','get');
 	qry.setProperty('source_id','198BF0BCCC364EE29F56434D803D5F1E');  // source = Change Controlled Items
 	qry.setAttribute('select','related_id(name,open_icon)');
@@ -151,7 +159,7 @@ function affectedOnLoad() {    //fires when the last grid "notTree" is loaded an
 		if (Tmp !="Needs Review" && Tmp !="Not Affected") ChangeTypes += Tmp + "|";
 	}
 
-   // now load the data from the Item.DOM of the ECR/ECN form
+   // now load the data from the Item.DOM of the ECR/ECN/Simple ECO form
    // 10.18.2006 for v8,  need to force the ECR/ECN window to load the Relationship grid items into the DOM
 
 	// ask the server for a list of IDs of relatioships
@@ -160,12 +168,13 @@ function affectedOnLoad() {    //fires when the last grid "notTree" is loaded an
 
 
 	var relQryItem = THIS.newItem('','');
-	relQryItem.loadAML("<Item type='" + ParentType + "' action='get' id='" + THIS.getID() + "' select='id'><Relationships><Item type='" + ParentType + " Affected Item' action='get' select='id'></Item><Item type='" + ParentType + " Affected Wizard Item' action='get' select='id'></Item></Relationships></Item>");
+	
+	relQryItem.loadAML("<Item type='" + ParentType + "' action='get' id='" + THIS.getID() + "' select='id'><Relationships><Item type='" + AffectedRelType + "' action='get' select='id'></Item><Item type='" + AffectedWizardRelType + "' action='get' select='id'></Item></Relationships></Item>");
 	var relSet = relQryItem.apply();
 	if (relSet.isError() ){
 		// alert(relSet.getErrorDetail());
 	}
-	relSet = relSet.getItemsByXPath("//Item[@type='" + ParentType + " Affected Item']");
+	relSet = relSet.getItemsByXPath("//Item[@type='" + AffectedRelType + "']");
 	for (var i=0; i<relSet.getItemCount(); i++) {
 		var ID = relSet.getItemByIndex(i).getID();
 
@@ -173,16 +182,16 @@ function affectedOnLoad() {    //fires when the last grid "notTree" is loaded an
 		var Checker = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@id='" + ID +"']");
 		if (Checker.getItemCount()== 0 ) {
 			// ask the client to load this one into the DOM
-			 var aRel = top.aras.getItemRelationship(THIS.node, ParentType + " Affected Item", ID, true);
+			 var aRel = top.aras.getItemRelationship(THIS.node, AffectedRelType, ID, true);
 			 if (!aRel) {
-					top.aras.AlertError('Failed to get the "' + ParentType + ' Affected Item" item.');
+					top.aras.AlertError('Failed to get the "' + AffectedRelType + '" item.');
 					return;
 			 }
 		}
 	}
    // DOM now has all the rows of ECR/ECN Affected Item   loaded
    // now Query the visible Affected Items with Add/Change/Delete Actions to load the Affected Items details (not in client dom yet
-	var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='" + ParentType + " Affected Item']/related_id/Item[@type='Affected Item']");
+	var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='" + AffectedRelType + "']/related_id/Item[@type='Affected Item']");
 	for (var i=0; i < Items.getItemCount(); i++) 	{
 		var Item = Items.getItemByIndex(i);
 
@@ -221,7 +230,7 @@ function affectedOnLoad() {    //fires when the last grid "notTree" is loaded an
 
    // Second - the Hidden structure of  Needs Review and Not Affected  affected items
    // LOAD these items onto the DOM if the are not there yet.
-	relSet = relSet.getItemsByXPath("//Item[@type='" + ParentType + " Affected Wizard Item']");
+	relSet = relSet.getItemsByXPath("//Item[@type='" + AffectedWizardRelType + "']");
 	for (var i=0; i<relSet.getItemCount(); i++) {
 		var ID = relSet.getItemByIndex(i).getID();
 
@@ -229,15 +238,15 @@ function affectedOnLoad() {    //fires when the last grid "notTree" is loaded an
 		var Checker = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@id='" + ID +"']");
 		if (Checker.getItemCount()== 0 ) {
 			// ask the client to load this one into the DOM
-			 var aRel = top.aras.getItemRelationship(THIS.node, ParentType + " Affected Wizard Item", ID, true);
+			 var aRel = top.aras.getItemRelationship(THIS.node, AffectedWizardRelType, ID, true);
 			 if (!aRel) {
-					top.aras.AlertError('Failed to get the ' + ParentType + '" Affected Item" item.');
+					top.aras.AlertError('Failed to get the "' + AffectedWizardRelType + '" item.');
 					return;
 			 }
 		}
 	}
 
-	var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='" + ParentType + " Affected Wizard Item']");
+	var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='" + AffectedWizardRelType + "']");
 	for (var i=0; i < Items.getItemCount(); i++) 	{
 		var RelItem = Items.getItemByIndex(i);
 		var Item = RelItem.getItemsByXPath("related_id/Item[@type='Affected Item']").getItemByIndex(0);
@@ -298,7 +307,7 @@ function saveExit(save) {
 
 		// ----------- Step One -------------------------------------------------------------------
 		// now load the data from the Item.DOM of the ECR form,  ECR Affected Item Relationship
-		var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='" + ParentType + " Affected Item']");
+		var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='" + AffectedRelType + "']");
 		for (var i=0; i < Items.getItemCount(); i++) 	{
 			var RelItem = Items.getItemByIndex(i);
 			var Item    = RelItem.getItemsByXPath("related_id/Item[@type='Affected Item']").getItemByIndex(0);
@@ -348,7 +357,7 @@ function saveExit(save) {
 		// ------------ Step Two --------------------------------------------
 		// loop thru ECR Affected Wizard Item
 		// now load the data from the Item.DOM of the ECR form,  ECR Affected Wizard Item Relationship
-		var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='" + ParentType + " Affected Wizard Item']");
+		var Items = THIS.getItemsByXPath("//Item[@id='" + THIS.getID() + "']/Relationships/Item[@type='" + AffectedWizardRelType + "']");
 		for (var i=0; i < Items.getItemCount(); i++) 	{
 			var RelItem = Items.getItemByIndex(i);
 			var Item    = RelItem.getItemsByXPath("related_id/Item[@type='Affected Item']").getItemByIndex(0);
@@ -403,7 +412,7 @@ function saveExit(save) {
 			if (rowid !="") {
 				THIS.setAttribute("isDirty","1"); // set the CR as dirty
 				if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
-				var myNewRelItem = innovator.newItem(ParentType + ' Affected Item','add');
+				var myNewRelItem = innovator.newItem(AffectedRelType,'add');
 				myNewRelItem.setAttribute("isTemp","1");
 				myNewRelItem.setAttribute("isDirty","1");
 				var myNewItem = innovator.newItem('Affected Item','add');
@@ -412,7 +421,7 @@ function saveExit(save) {
 				myNewItem.setProperty('action',affectedTreeControl.cells(rowid,1).getValue());
 				myNewItem.setAttribute("isTemp","1");
 				myNewItem.setAttribute("isDirty","1");
-				myNewItem.setPropertyAttribute("affected_id","keyed_name",affectedTreeControl.cells(rowid,3).getValue())
+				myNewItem.setPropertyAttribute("affected_id","keyed_name",affectedTreeControl.cells(rowid,2).getValue())
 				myNewItem.setPropertyAttribute("affected_id","type",affectedTreeControl.cells(rowid,0).getValue())
 
 				myNewItem.setProperty("affected_type","<img src='"+ ChangeItemTypes[affectedTreeControl.cells(rowid,0).getValue()] +"'>");
@@ -430,7 +439,7 @@ function saveExit(save) {
 			if (rowid !="") {
 				THIS.setAttribute("isDirty","1"); // set the ECR as dirty
 				if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
-				var myNewRelItem = innovator.newItem(ParentType + ' Affected Wizard Item','add');
+				var myNewRelItem = innovator.newItem(AffectedWizardRelType,'add');
 				var myNewItem = innovator.newItem('Affected Item','add');
 				myNewRelItem.setProperty('action','Not Affected');
 				myNewItem.setProperty('affected_type',notTreeControl.cells(rowid,0).getValue() );
@@ -454,7 +463,7 @@ function saveExit(save) {
 			if (rowid !="") {
 				THIS.setAttribute("isDirty","1"); // set the ECR as dirty
 				if (THIS.getAttribute("action") !="add") THIS.setAttribute("action","update");
-				var myNewRelItem = innovator.newItem(ParentType + ' Affected Wizard Item','add');
+				var myNewRelItem = innovator.newItem(AffectedWizardRelType,'add');
 				var myNewItem = innovator.newItem('Affected Item','add');
 				myNewRelItem.setProperty('action','Needs Review');
 				myNewItem.setProperty('affected_type',requiredTreeControl.cells(rowid,0).getValue() );
@@ -974,7 +983,7 @@ function onMenuNot(id,r,c) {
 	treeControl.Delimeter = "|";
 	treeControl.DrawGrid = true;
 	treeControl.HeaderBGColor = "#d4d0c8";
-	treeControl.SelBGColor = "#FFFF00";
+	treeControl.SelBGColor = "#0000ff";
 	treeControl.ColumnDraggable = "0";
 	treeControl.noSort = "1";
 	treeControl.ExpandRoot = "1";
@@ -1015,12 +1024,12 @@ function onMenuNot(id,r,c) {
 	affectedTreeControl.Delimeter = "|";
 	affectedTreeControl.DrawGrid = true;
 	affectedTreeControl.HeaderBGColor = "#d4d0c8";
-	affectedTreeControl.SelBGColor = "#FFFF00";
+	affectedTreeControl.SelBGColor = "#0000ff";
 	affectedTreeControl.ColumnDraggable = false;
 	affectedTreeControl.noSort = true;
 	affectedTreeControl.treeLines = "1";
    affectedTreeControl.setColumnCount(4);
-	affectedTreeControl.setInitWidths("60|45|60|135");
+	affectedTreeControl.setInitWidths("60|50|60|130");
 	affectedTreeControl.setHorAligns("LEFT|LEFT|LEFT|LEFT");
    affectedTreeControl.SetHeaderCol(0,"Type");
    affectedTreeControl.SetHeaderCol(1,"Action");
@@ -1056,7 +1065,7 @@ function onMenuNot(id,r,c) {
 	requiredTreeControl.Delimeter = "|";
 	requiredTreeControl.DrawGrid = true;
 	requiredTreeControl.HeaderBGColor = "#d4d0c8";
-	requiredTreeControl.SelBGColor = "#FFFF00";
+	requiredTreeControl.SelBGColor = "#0000ff";
 	requiredTreeControl.ColumnDraggable = false;
 	requiredTreeControl.noSort = true;
 	requiredTreeControl.treeLines = "1";
@@ -1095,7 +1104,7 @@ function onMenuNot(id,r,c) {
 	notTreeControl.Delimeter = "|";
 	notTreeControl.DrawGrid = true;
 	notTreeControl.HeaderBGColor = "#d4d0c8";
-	notTreeControl.SelBGColor = "#FFFF00";
+	notTreeControl.SelBGColor = "#0000ff";
 	notTreeControl.ColumnDraggable = false;
 	notTreeControl.noSort = true;
 	notTreeControl.treeLines = "1";
@@ -1130,7 +1139,7 @@ function onMenuNot(id,r,c) {
 </script>
 
 <script for="tabbar" event="OnStart()">
-  tabbar.addTab('bom', 'Structure');
+  tabbar.addTab('bom', 'Structure View');
   tabbar.addTab('wu', 'Direct Where-Used');
   tabbar.addTab('hierarchywu', 'Summary Compressed Where-Used');
   currTabID='wu';
@@ -1170,13 +1179,65 @@ function onMenuNot(id,r,c) {
   onToolbarClick(tbItem);
 </script>
 
+<style>
+#active_slot {
+	height:28px;
+	left: 10px;
+	top: 0px;
+	position: absolute;
+	width:400px;
+	display: block;
+	border-bottom: 1px solid #000000; 
+}
+#toolbar_slot {
+	height:28px;
+	left: 440px;
+	top: 0px;
+	position: absolute;
+   width:420px;
+	display: block;
+}
+#main_grid {
+	left: 10px;
+	top: 52px;
+	position: absolute;
+   width:480px;
+   height:520px;
+	display: block;
+}
+#top_right {
+	left: 490px;
+	top: 29px;
+	position: absolute;
+   width:400px;
+	display: block;
+	height: 160px;
+}
+#middle_right {
+	left: 490px;
+	top: 208px;
+	position: absolute;
+   width:400px;
+	height: 160px;
+	display: block;
+}
+#lower_right {
+	left: 490px;
+	top: 388px;
+	position: absolute;
+   width:390px;
+	height: 160px;
+	display: block;
+}
+</style>
+</head>
+<body topmargin="0" leftmargin="7" rightmargin="1" bottommargin="0" style="background-color: ButtonFace;">
 
-<body topmargin="0" leftmargin="7" bgcolor= "#d4d0c8" rightmargin="1" bottommargin="0" style="background-color:#d4d0c8;">
-<table border="0" cellpadding="0" cellspacing="0" width="100%">
-<tr height="28px">
-	<td align="left"   width="40%" id="active_slot" ></td>
-	<td align="right"  width="55%"  id="toolbar_slot" >
-  		<comment id="tb_commented">
+<div id="active_slot">
+		&nbsp;
+</div>
+<div id="toolbar_slot">
+		<comment id="tb_commented">
 			<object id="toolbar"
 			  style="width:100%;height:26px"
 			  classid="../cbin/Toolbar.dll#Aras.Client.Controls.Toolbar" >
@@ -1185,53 +1246,38 @@ function onMenuNot(id,r,c) {
 		<script>
 		WriteUncommentedObject("tb_commented");
 		</script>
-	</td>
-</tr>
-<tr>
-	<td colspan="2">
-	<table width="100%" height="100%"  border="0" cellpadding="0" cellspacing="0">
-	<tr>
-		<td>
-	   <table border="0" bgcolor= "#d4d0c8" cellpadding="0" cellspacing="0" >
-	   <tr height="27px">
-			<td align="left" width="480px">
-				<comment id="tabbar_commented">
-				<object id="tabbar"
-				  classId="../cbin/SimpleTabbar.dll#Aras.Client.Controls.SimpleTabbar"
-				  style="width:100%; height:26px;">
-				</object>
-				</comment>
-				<script>
-				WriteUncommentedObject("tabbar_commented");
-				</script>
-		   </td>
-
-	   </tr>
-	   <tr>
-	   	<td>
-  			<comment id="tree_commented">
-				 <object id="tree" width="480px" height="490px"
-					class="loadedApplet"
-					classid="../cbin/TreeTable.dll#Aras.Client.Controls.TreeGridContainer" VIEWASTEXT>
-				 </object>
-			</comment>
-			<script>
-			WriteUncommentedObject("tree_commented");
-			</script>
-			</td>
-		</tr>
-		</table>
+</div>
+<div id="main_grid">
+		<comment id="tabbar_commented">
+		<object id="tabbar"
+		  classId="../cbin/SimpleTabbar.dll#Aras.Client.Controls.SimpleTabbar"
+		  style="width:480px; height:26px;">
+		</object>
+		</comment>
+		<script>
+		WriteUncommentedObject("tabbar_commented");
+		</script>
+		<br/>
+		<comment id="tree_commented">
+		 <object id="tree" width="480px" height="490px"
+			class="loadedApplet"
+			classid="../cbin/TreeTable.dll#Aras.Client.Controls.TreeGridContainer" VIEWASTEXT>
+		 </object>
+		</comment>
+		<script>
+		WriteUncommentedObject("tree_commented");
+		</script>
+</div>
+<div id="top_right">
+	<table  border="0" cellpadding="0" cellspacing="3" >
+	<tr valign="middle">
+		<td width="30">
+			<input type="button" value=">>>" size="4" name="userAddToAffected" id="userAddToAffected" disabled="true" onclick="addToTheRight(affectedTreeControl,'affectedTreeControl');">
 		</td>
-		<td>
-		<table  border="0" cellpadding="0" cellspacing="3">
-		<tr>
-			<td>
-			<INPUT type="button" value=">>>" size="4" name="userAddToAffected" id="userAddToAffected" disabled="true" onclick="addToTheRight(affectedTreeControl,'affectedTreeControl');">
-			</td>
-			<td>
-			<font size="3">Affected Items</font>
-  			<comment id="affectedTree_commented">
-				 <object id="affectedTree" width="300px" height="160px"
+		<td width="320">
+			<font size="3"><b>Affected Items</b></font>
+			<comment id="affectedTree_commented">
+				 <object id="affectedTree" width="320px" height="160px"
 					class="loadedApplet"
 					classid="../cbin/TreeTable.dll#Aras.Client.Controls.GridContainer" VIEWASTEXT>
 				 </object>
@@ -1239,49 +1285,52 @@ function onMenuNot(id,r,c) {
 			<script>
 			WriteUncommentedObject("affectedTree_commented");
 			</script>
-			</td>
-		</tr>
-		<tr>
-			<td>
-			<INPUT type="button" value=">>>" name="userAddToRequired" id="userAddToRequired" disabled="true"  onclick="addToTheRight(requiredTreeControl,'requiredTreeControl');">
-			</td>
-			<td>
-			<font size="3">Needs Review</font>
-  			<comment id="requiredTree_commented">
-				 <object id="requiredTree" width="300px" height="160px"
-					class="loadedApplet"
-					classid="../cbin/TreeTable.dll#Aras.Client.Controls.GridContainer" VIEWASTEXT>
-				 </object>
-			</comment>
-			<script>
-			WriteUncommentedObject("requiredTree_commented");
-			</script>
-			</td>
-		</tr>
-		<tr>
-			<td>
-			<INPUT type="button" value=">>>" name="userAddToNotAffected" id="userAddToNotAffected" disabled="true" onclick="addToTheRight(notTreeControl,'notTreeControl');">
-			</TD>
-			<td>
-			<font size="3">Not Affected</font>
-  			<comment id="notTree_commented">
-				 <object id="notTree" width="300px" height="160px"
-					class="loadedApplet"
-					classid="../cbin/TreeTable.dll#Aras.Client.Controls.GridContainer" VIEWASTEXT>
-				 </object>
-			</comment>
-			<script>
-			WriteUncommentedObject("notTree_commented");
-			</script>
-			</td>
-		</tr>
-		</table>
 		</td>
 	</tr>
 	</table>
-	</td>
-</tr>
-</table>
+</div>
+<div id="middle_right">	
+	<table  border="0" cellpadding="0" cellspacing="3" >
+		<tr valign="middle">
+			<td width="30">
+				<input type="button" value=">>>" name="userAddToRequired" id="userAddToRequired" disabled="true"  onclick="addToTheRight(requiredTreeControl,'requiredTreeControl');">
+			</td>
+			<td>
+				<font size="3"><b>Needs Review</b></font>
+				<comment id="requiredTree_commented">
+					 <object id="requiredTree" width="320px" height="160px"
+						class="loadedApplet"
+						classid="../cbin/TreeTable.dll#Aras.Client.Controls.GridContainer" VIEWASTEXT>
+					 </object>
+				</comment>
+				<script>
+				WriteUncommentedObject("requiredTree_commented");
+				</script>
+			</td>
+		</tr>
+	</table>
+</div>
+<div id="lower_right">	
+	<table  border="0" cellpadding="0" cellspacing="3" >
+		<tr valign="middle">
+			<td width="30">
+				<input type="button" value=">>>" name="userAddToNotAffected" id="userAddToNotAffected" disabled="true" onclick="addToTheRight(notTreeControl,'notTreeControl');">
+			</td>
+			<td>
+				<font size="3"><b>Not Affected</b></font>
+				<comment id="notTree_commented">
+					 <object id="notTree" width="320px" height="160px"
+						class="loadedApplet"
+						classid="../cbin/TreeTable.dll#Aras.Client.Controls.GridContainer" VIEWASTEXT>
+					 </object>
+				</comment>
+				<script>
+				WriteUncommentedObject("notTree_commented");
+				</script>
+			</td>
+		</tr>
+	</table>
+</div>
 </body>
 </html>]]></html_code>
       <is_disabled>0</is_disabled>

@@ -1,5 +1,6 @@
 ﻿<AML>
  <Item type="Method" id="35CEA013D2D3405781611E1B01F33E4A" action="add">
+  <classification>/*</classification>
   <method_code><![CDATA[//  Method to assist in filtering of the lookup in CMII Wizard
 //  this method connected to the OnSearch event of the "action" property of itemType "ECR Affected Wizard Item"
 // 06.27.2008  peter   added with the 8.2, 9.0.1 version of Wizard.

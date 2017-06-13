@@ -1,5 +1,5 @@
 ﻿<AML>
- <Item type="RelationshipType" id="C0E4FE4D2D9C41E2BF96D8DB72485554" action="add" dependencyLevel="0">
+ <Item type="RelationshipType" id="8E878FD3B9524B89B30F8C252B89FD02" action="add" dependencyLevel="0">
   <auto_search>1</auto_search>
   <behavior>float</behavior>
   <classification>/*</classification>
@@ -9,33 +9,31 @@
   <inc_rel_key_name>1</inc_rel_key_name>
   <inc_related_key_name>1</inc_related_key_name>
   <is_list_type>0</is_list_type>
-  <label xml:lang="en">Wizard Internal</label>
-  <name>ECN Affected Wizard Item</name>
+  <label xml:lang="en">Wizard</label>
+  <name>Simple ECO Affected Wiz Item</name>
   <new_show_related>0</new_show_related>
   <related_id keyed_name="Affected Item" type="ItemType" name="Affected Item">BFAAB0F6838D4F80BF12CB328FF5B097</related_id>
   <related_notnull>0</related_notnull>
   <related_option>2</related_option>
-  <relationship_id keyed_name="ECN Affected Wizard Item" type="ItemType" name="ECN Affected Wizard Item">
-   <Item type="ItemType" id="98E621BA93A5487D9468AE0D8F6FF31A" action="add">
+  <relationship_id keyed_name="Simple ECO Affected Wiz Item" type="ItemType" name="Simple ECO Affected Wiz Item">
+   <Item type="ItemType" id="E1CF10FDCAD642B0AF39F64AE97AA0AB" action="add">
     <allow_private_permission>1</allow_private_permission>
     <auto_search>0</auto_search>
-    <enforce_discovery>1</enforce_discovery>
+    <enforce_discovery>0</enforce_discovery>
     <hide_where_used>0</hide_where_used>
     <implementation_type>table</implementation_type>
-    <instance_data>ECN_AFFECTED_WIZARD_ITEM</instance_data>
+    <instance_data>SIMPLE_ECO_AFFECTED_WIZ_ITEM</instance_data>
     <is_dependent>0</is_dependent>
     <is_relationship>1</is_relationship>
     <is_versionable>0</is_versionable>
-    <label xml:lang="en">ECN Affected Wizard Item</label>
-    <label_plural xml:lang="en">ECR Affected Wizard Items</label_plural>
     <manual_versioning>0</manual_versioning>
-    <name>ECN Affected Wizard Item</name>
+    <name>Simple ECO Affected Wiz Item</name>
     <revisions keyed_name="Default" type="Revision">7FE395DD8B9F4E1090756A34B733D75E</revisions>
     <show_parameters_tab>1</show_parameters_tab>
     <unlock_on_logout>0</unlock_on_logout>
     <use_src_access>1</use_src_access>
     <Relationships>
-     <Item type="Property" id="4686808F460441BE98A2BCCE42138E6F" action="add">
+     <Item type="Property" id="C4A4B3507CDC438B87E4D8C0C5D0D201" action="add">
       <classification>/*</classification>
       <column_alignment>left</column_alignment>
       <data_source keyed_name="Affected Item Wizard Actions">A3ECFF078DE943DBBFE51A9A4D5CBB95</data_source>
@@ -51,15 +49,15 @@
       <range_inclusive>0</range_inclusive>
       <readonly>0</readonly>
       <sort_order>512</sort_order>
-      <source_id keyed_name="ECN Affected Wizard Item" type="ItemType" name="ECN Affected Wizard Item">98E621BA93A5487D9468AE0D8F6FF31A</source_id>
+      <source_id keyed_name="Simple ECO Affected Wiz Item" type="ItemType" name="Simple ECO Affected Wiz Item">E1CF10FDCAD642B0AF39F64AE97AA0AB</source_id>
       <track_history>0</track_history>
      </Item>
     </Relationships>
    </Item>
   </relationship_id>
-  <sort_order>512</sort_order>
-  <source_id keyed_name="ECN" type="ItemType" name="ECN">85F86794FACF42599F07019F7BEA1D46</source_id>
+  <sort_order>500</sort_order>
+  <source_id keyed_name="Simple ECO" type="ItemType" name="Simple ECO">05C2AC1EB54742FF95CBB12FE12F5EDB</source_id>
  </Item>
- <Item type="View" action="delete" where="source_id='98E621BA93A5487D9468AE0D8F6FF31A'"></Item>
- <Item type="Form" action="delete" where="name='ECN Affected Wizard Item'"></Item>
+ <Item type="View" action="delete" where="source_id='E1CF10FDCAD642B0AF39F64AE97AA0AB'"></Item>
+ <Item type="Form" action="delete" where="name='Simple ECO Affected Wiz Item'"></Item>
 </AML>
